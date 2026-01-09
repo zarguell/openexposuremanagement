@@ -354,14 +354,14 @@ Implement CVE-level suppression proposal flow and async effective-status recompu
 ## Milestone: Demo data, ops docs, and demo checklist
 Make the demo easy to run and verify end-to-end; reset context after this milestone.
 
-- [ ] Task: Add sample ingestion payloads + seeding script
+- [x] Task: Add sample ingestion payloads + seeding script
   - **Description:** Provide sample Tenable/Qualys-like JSON payloads and a script to POST them using an ingestion API key.
   - **Acceptance criteria:** Running the script populates assets and findings; repeat runs are idempotent.
   - **Validation command:** `make seed && make demo-smoke`
   - **Dependencies:** VM ingestion pipeline → Implement POST /ingest/vm/findings end-to-end
   - **Estimated tokens:** 2600
 
-- [ ] Task: Add end-to-end “demo smoke test” script
+- [x] Task: Add end-to-end “demo smoke test” script
   - **Description:** Script that brings up stack, ingests data, refreshes views, and hits key endpoints (`/assets`, `/findings`, `/intel/status`).
   - **Acceptance criteria:** Script exits non-zero on failure; produces minimal readable output for demo operator.
   - **Validation command:** `make demo-smoke`

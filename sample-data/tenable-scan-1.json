@@ -1,0 +1,127 @@
+{
+  "source": "tenable",
+  "scanner": "Nessus",
+  "scanned_at": "2024-01-15T10:00:00Z",
+  "findings": [
+    {
+      "asset": {
+        "hostname": "web-server-01.example.com",
+        "ip_addresses": ["192.168.1.100", "10.0.1.100"],
+        "external_ids": {
+          "aws:instance_id": "i-1234567890abcdef0",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "12345",
+        "title": "Apache HTTP Server Multiple Vulnerabilities",
+        "severity": "High",
+        "cves": ["CVE-2021-44228", "CVE-2021-45046"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/12345",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228"
+        ],
+        "description": "Multiple vulnerabilities in Apache HTTP Server",
+        "solution": "Upgrade to latest version or apply patches"
+      },
+      "status": "open",
+      "first_found": "2024-01-10T08:00:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 443,
+        "protocol": "https",
+        "service": "Apache/2.4.41"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "web-server-01.example.com",
+        "ip_addresses": ["192.168.1.100", "10.0.1.100"],
+        "external_ids": {
+          "aws:instance_id": "i-1234567890abcdef0",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "67890",
+        "title": "OpenSSL Heartbleed Vulnerability",
+        "severity": "Critical",
+        "cves": ["CVE-2014-0160"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/67890",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0160"
+        ],
+        "description": "OpenSSL Heartbleed information disclosure vulnerability",
+        "solution": "Upgrade OpenSSL to version 1.0.1g or later"
+      },
+      "status": "open",
+      "first_found": "2024-01-12T14:30:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 443,
+        "protocol": "https",
+        "version": "OpenSSL/1.0.1f"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "database-server-01.example.com",
+        "ip_addresses": ["192.168.2.50", "10.0.2.50"],
+        "external_ids": {
+          "aws:instance_id": "i-0987654321fedcba0",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "54321",
+        "title": "PostgreSQL Authentication Bypass",
+        "severity": "High",
+        "cves": ["CVE-2022-1552"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/54321",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-1552"
+        ],
+        "description": "PostgreSQL authentication bypass vulnerability",
+        "solution": "Apply security patches or upgrade PostgreSQL"
+      },
+      "status": "open",
+      "first_found": "2024-01-13T16:45:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 5432,
+        "protocol": "tcp",
+        "version": "PostgreSQL/13.4"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "api-gateway-01.example.com",
+        "ip_addresses": ["192.168.3.25", "10.0.3.25"],
+        "external_ids": {
+          "aws:instance_id": "i-abcdef12345678901",
+          "aws:region": "us-west-2"
+        }
+      },
+      "finding": {
+        "definition_id": "98765",
+        "title": "Nginx HTTP Request Smuggling",
+        "severity": "Medium",
+        "cves": ["CVE-2023-44487"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/98765",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-44487"
+        ],
+        "description": "HTTP request smuggling vulnerability in Nginx",
+        "solution": "Update Nginx configuration and apply patches"
+      },
+      "status": "open",
+      "first_found": "2024-01-14T09:15:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 80,
+        "protocol": "http",
+        "server": "nginx/1.20.1"
+      }
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "source": "qualys",
+  "scanner": "QualysGuard",
+  "scanned_at": "2024-01-16T14:30:00Z",
+  "findings": [
+    {
+      "asset": {
+        "hostname": "web-server-02.example.com",
+        "ip_addresses": ["192.168.1.101", "10.0.1.101"],
+        "external_ids": {
+          "aws:instance_id": "i-2345678901bcdef12",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "QUALYS-001",
+        "title": "Microsoft Windows Remote Desktop Protocol Vulnerability",
+        "severity": "High",
+        "cves": ["CVE-2019-0708"],
+        "references": [
+          "https://qualys.com/vulnerability-research/bluekeep",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-0708"
+        ],
+        "description": "BlueKeep vulnerability in Windows RDP",
+        "solution": "Apply Windows security updates and disable RDP if not needed"
+      },
+      "status": "open",
+      "first_found": "2024-01-11T11:20:00Z",
+      "last_found": "2024-01-16T14:30:00Z",
+      "evidence": {
+        "port": 3389,
+        "protocol": "tcp",
+        "service": "Microsoft Terminal Services"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "web-server-01.example.com",
+        "ip_addresses": ["192.168.1.100", "10.0.1.100"],
+        "external_ids": {
+          "aws:instance_id": "i-1234567890abcdef0",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "QUALYS-002",
+        "title": "Apache Struts Remote Code Execution",
+        "severity": "Critical",
+        "cves": ["CVE-2017-5638"],
+        "references": [
+          "https://qualys.com/research/security-advisories",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-5638"
+        ],
+        "description": "Equifax breach vulnerability in Apache Struts",
+        "solution": "Upgrade Apache Struts to version 2.3.32 or 2.5.10.1+"
+      },
+      "status": "fixed",
+      "first_found": "2024-01-08T13:45:00Z",
+      "last_found": "2024-01-16T14:30:00Z",
+      "evidence": {
+        "port": 8080,
+        "protocol": "http",
+        "framework": "Apache Struts/2.3.29"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "load-balancer-01.example.com",
+        "ip_addresses": ["192.168.4.10", "10.0.4.10"],
+        "external_ids": {
+          "aws:elb": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-load-balancer/1234567890abcdef",
+          "aws:region": "us-east-1"
+        }
+      },
+      "finding": {
+        "definition_id": "QUALYS-003",
+        "title": "HAProxy HTTP Request Smuggling",
+        "severity": "High",
+        "cves": ["CVE-2021-40346"],
+        "references": [
+          "https://qualys.com/advisories",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-40346"
+        ],
+        "description": "HTTP request smuggling in HAProxy",
+        "solution": "Upgrade HAProxy to version 2.0.25, 2.2.17, 2.4.4 or later"
+      },
+      "status": "open",
+      "first_found": "2024-01-15T07:30:00Z",
+      "last_found": "2024-01-16T14:30:00Z",
+      "evidence": {
+        "port": 80,
+        "protocol": "http",
+        "server": "HAProxy/2.0.14"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "monitoring-server-01.example.com",
+        "ip_addresses": ["192.168.5.75", "10.0.5.75"],
+        "external_ids": {
+          "aws:instance_id": "i-3456789012cdef345",
+          "aws:region": "us-west-2"
+        }
+      },
+      "finding": {
+        "definition_id": "QUALYS-004",
+        "title": "Elasticsearch Groovy Scripting Engine RCE",
+        "severity": "Critical",
+        "cves": ["CVE-2015-1427"],
+        "references": [
+          "https://qualys.com/research/advisories",
+          "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-1427"
+        ],
+        "description": "Remote code execution in Elasticsearch Groovy scripting",
+        "solution": "Disable dynamic scripting or upgrade to Elasticsearch 1.6.1+"
+      },
+      "status": "open",
+      "first_found": "2024-01-14T18:20:00Z",
+      "last_found": "2024-01-16T14:30:00Z",
+      "evidence": {
+        "port": 9200,
+        "protocol": "http",
+        "version": "Elasticsearch/1.5.2"
+      }
+    }
+  ]
+}

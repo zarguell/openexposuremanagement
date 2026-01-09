@@ -40,8 +40,8 @@ migrate-create: ## Create new migration (usage: make migrate-create name=create_
 
 seed: ## Seed database with sample data
 	@echo "Seeding sample data..."
-	@if [ -f scripts/seed.sh ]; then \
-		./scripts/seed.sh; \
+	@if [ -f scripts/seed-data.go ]; then \
+		cd scripts && go run seed-data.go -demo; \
 	else \
 		echo "Seed script not yet implemented"; \
 	fi

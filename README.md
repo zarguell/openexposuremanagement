@@ -53,6 +53,19 @@ Configure OIDC authentication by setting these environment variables:
 - `VITE_OIDC_ISSUER` - Your OIDC provider issuer URL
 - `VITE_OIDC_CLIENT_ID` - Your OIDC client ID
 
+### 🧪 Testing & Validation
+
+```bash
+# Run all tests
+make test
+
+# Run smoke test (end-to-end validation)
+make demo-smoke
+
+# Seed sample data
+make seed
+```
+
 ## Development
 
 ### Prerequisites

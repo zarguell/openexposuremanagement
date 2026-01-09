@@ -38,7 +38,26 @@ func (s *Server) registerRoutes() {
 
 	// API v1 routes
 	apiV1 := http.NewServeMux()
+
+	// User endpoints
 	apiV1.HandleFunc("/me", handlers.GetMe)
+
+	// Ingestion endpoints
+	apiV1.HandleFunc("/ingest/vm/findings", handlers.IngestVMFindings(s.db))
+
+	// Asset endpoints
+	apiV1.HandleFunc("/assets", handlers.ListAssets(s.db))
+	apiV1.HandleFunc("/assets/", handlers.GetAssetByID(s.db))
+
+	// Findings endpoints
+	apiV1.Handle("/findings", handlers.ListFindings(s.db))
+
+	// Dashboard endpoints
+	apiV1.Handle("/dashboard", handlers.GetDashboard(s.db))
+
+	// Intel endpoints
+	apiV1.Handle("/intel/status", handlers.GetIntelStatus(s.db))
+	apiV1.Handle("/intel/refresh", handlers.RefreshIntel(s.db))
 
 	// Mount API v1
 	s.router.Handle("/api/v1/", http.StripPrefix("/api/v1", apiV1))
