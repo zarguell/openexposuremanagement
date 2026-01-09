@@ -32,7 +32,7 @@ cd ui && npm run dev
 docker compose up -d
 # Frontend: http://localhost:80
 # Backend API: http://localhost:8080
-# PgAdmin: http://localhost:5050 (admin@example.com / admin)
+# PgAdmin: http://localhost:5050 (admin@localhost / admin)
 ```
 
 **⚠️ Security Warning**: Demo mode disables authentication entirely. This is NOT secure for production use!
