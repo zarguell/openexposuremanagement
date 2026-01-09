@@ -31,8 +31,9 @@ func TestConvertToFindingInstance(t *testing.T) {
 		tenantID := int64(1)
 		assetID := int64(100)
 		definitionUID := "tenable-12345"
+		policyRevision := int64(5)
 
-		instance := ConvertToFindingInstance(tenantID, assetID, definitionUID, vmFinding)
+		instance := ConvertToFindingInstance(tenantID, assetID, definitionUID, vmFinding, policyRevision)
 
 		assert.Equal(t, tenantID, instance.TenantID)
 		assert.Equal(t, assetID, instance.AssetID)
@@ -40,7 +41,7 @@ func TestConvertToFindingInstance(t *testing.T) {
 		assert.Equal(t, "open", instance.ScannerStatus)
 		assert.Equal(t, "open", instance.EffectiveStatus)
 		assert.Equal(t, "scanner", instance.EffectiveReason)
-		assert.Equal(t, int64(0), instance.EffectiveRevision)
+		assert.Equal(t, policyRevision, instance.EffectiveRevision)
 		assert.NotNil(t, instance.EvidenceJSON)
 	})
 
@@ -56,7 +57,7 @@ func TestConvertToFindingInstance(t *testing.T) {
 			},
 		}
 
-		instance := ConvertToFindingInstance(1, 100, "tenable-12345", vmFinding)
+		instance := ConvertToFindingInstance(1, 100, "tenable-12345", vmFinding, 1)
 
 		assert.Equal(t, "fixed", instance.ScannerStatus)
 		assert.Equal(t, "fixed", instance.EffectiveStatus)
@@ -75,7 +76,7 @@ func TestConvertToFindingInstance(t *testing.T) {
 			},
 		}
 
-		instance := ConvertToFindingInstance(1, 100, "tenable-12345", vmFinding)
+		instance := ConvertToFindingInstance(1, 100, "tenable-12345", vmFinding, 1)
 
 		assert.Equal(t, "fixed_by_verification", instance.ScannerStatus)
 		assert.Equal(t, "fixed", instance.EffectiveStatus) // Maps to "fixed"
@@ -180,7 +181,7 @@ func TestEvidenceHandling(t *testing.T) {
 			},
 		}
 
-		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding)
+		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding, 1)
 
 		assert.NotNil(t, instance.EvidenceJSON)
 		assert.Equal(t, 443, instance.EvidenceJSON["port"])
@@ -200,7 +201,7 @@ func TestEvidenceHandling(t *testing.T) {
 			Evidence: nil,
 		}
 
-		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding)
+		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding, 1)
 
 		// Evidence should be nil or empty map
 		if instance.EvidenceJSON != nil {
@@ -221,7 +222,7 @@ func TestEvidenceHandling(t *testing.T) {
 			Evidence: map[string]interface{}{},
 		}
 
-		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding)
+		instance := ConvertToFindingInstance(1, 100, "test-12345", vmFinding, 1)
 
 		assert.NotNil(t, instance.EvidenceJSON)
 		assert.Empty(t, instance.EvidenceJSON)
@@ -302,6 +303,7 @@ func TestFindingInstance_EdgeCases(t *testing.T) {
 				tt.assetID,
 				tt.definitionUID,
 				tt.vmFinding,
+				1, // policyRevision
 			)
 
 			if !tt.expectError {

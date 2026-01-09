@@ -9,7 +9,7 @@ import (
 )
 
 // ConvertToFindingInstance converts a VMFinding to a FindingInstance
-func ConvertToFindingInstance(tenantID, assetID int64, definitionUID string, vmFinding *VMFinding) *repository.FindingInstance {
+func ConvertToFindingInstance(tenantID, assetID int64, definitionUID string, vmFinding *VMFinding, policyRevision int64) *repository.FindingInstance {
 	// Determine observation window timestamps
 	firstFound := vmFinding.FirstFound
 	lastFound := vmFinding.LastFound
@@ -36,7 +36,7 @@ func ConvertToFindingInstance(tenantID, assetID int64, definitionUID string, vmF
 		EvidenceJSON:      vmFinding.Evidence,
 		EffectiveStatus:   effectiveStatus,
 		EffectiveReason:   effectiveReason,
-		EffectiveRevision: 0, // TODO: Get from tenant_policy_state
+		EffectiveRevision: policyRevision,
 	}
 }
 
@@ -66,14 +66,24 @@ func ComputeEffectiveStatus(scannerStatus string, suppression interface{}) strin
 }
 
 // UpsertFindingInstance upserts a finding instance with observation window tracking
-func UpsertFindingInstance(ctx context.Context, db *sqlx.DB, tenantID, assetID int64, definitionUID string, vmFinding *VMFinding, policyRevision int64) error {
-	// Convert to finding instance
-	instance := ConvertToFindingInstance(tenantID, assetID, definitionUID, vmFinding)
-	instance.EffectiveRevision = policyRevision
+func UpsertFindingInstance(ctx context.Context, db *sqlx.DB, tenantID, assetID int64, definitionUID string, vmFinding *VMFinding) error {
+	// Get current policy revision for tenant
+	policyRepo := repository.NewTenantPolicyStateRepository(db)
+	policyState, err := policyRepo.GetOrCreate(ctx, tenantID)
+	if err != nil {
+		log.Error().
+			Int64("tenant_id", tenantID).
+			Err(err).
+			Msg("Failed to get tenant policy state")
+		return err
+	}
+
+	// Convert to finding instance with current policy revision
+	instance := ConvertToFindingInstance(tenantID, assetID, definitionUID, vmFinding, policyState.PolicyRevision)
 
 	// Upsert finding instance
-	repo := repository.NewFindingInstanceRepository(db)
-	err := repo.UpsertFindingInstance(ctx, instance)
+	findingRepo := repository.NewFindingInstanceRepository(db)
+	err = findingRepo.UpsertFindingInstance(ctx, instance)
 	if err != nil {
 		log.Error().
 			Int64("tenant_id", tenantID).
@@ -90,6 +100,7 @@ func UpsertFindingInstance(ctx context.Context, db *sqlx.DB, tenantID, assetID i
 		Str("definition_uid", definitionUID).
 		Str("scanner_status", instance.ScannerStatus).
 		Str("effective_status", instance.EffectiveStatus).
+		Int64("effective_revision", instance.EffectiveRevision).
 		Msg("Upserted finding instance")
 
 	return nil
