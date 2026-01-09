@@ -141,13 +141,13 @@ echo ""
 echo "🧪 Testing API endpoints..."
 
 # Test dashboard
-DASHBOARD_RESPONSE=$(curl -s "http://localhost:8080/api/v1/dashboard" 2>/dev/null)
-if [ $? -eq 0 ] && echo "$DASHBOARD_RESPONSE" | jq -e '.assets' > /dev/null 2>&1; then
+  DASHBOARD_RESPONSE=$(curl -s "http://localhost:8080/api/v1/dashboard" 2>/dev/null)
+  if [ $? -eq 0 ] && echo "$DASHBOARD_RESPONSE" | jq -e '.Assets' > /dev/null 2>&1; then
     print_status "Dashboard endpoint responding"
 
     # Check if we have data
-    ASSET_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.assets.total_assets // 0')
-    FINDING_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.findings.open_count // 0')
+    ASSET_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.Assets.TotalAssets // 0')
+    FINDING_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.Findings.OpenCount // 0')
 
     if [ "$ASSET_COUNT" -gt 0 ]; then
         print_status "Dashboard shows $ASSET_COUNT assets"
@@ -208,7 +208,7 @@ if command -v jq &> /dev/null; then
 
     # Check if findings were created
     FINDINGS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/findings" 2>/dev/null)
-    FINDING_COUNT=$(echo "$FINDINGS_RESPONSE" | jq '.total // 0' 2>/dev/null || echo "0")
+    FINDING_COUNT=$(echo "$FINDINGS_RESPONSE" | jq '.pagination.total // 0' 2>/dev/null || echo "0")
     if [ "$FINDING_COUNT" -gt 0 ]; then
         print_status "Findings API validated ($FINDING_COUNT findings found)"
     else
@@ -239,7 +239,7 @@ fi
 echo ""
 echo "🎉 Demo smoke test completed successfully!"
 echo ""
-echo "🌐 Frontend: http://localhost:3000"
+echo "🌐 Frontend: http://localhost:80"
 echo "🔧 Backend API: http://localhost:8080"
 echo "📊 PgAdmin: http://localhost:5050 (admin@oem.local / admin)"
 echo ""

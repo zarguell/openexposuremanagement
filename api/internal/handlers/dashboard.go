@@ -39,7 +39,22 @@ func GetDashboard(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		log.Info().Int64("tenant_id", userCtx.TenantID).Int("total_assets", data.Assets.TotalAssets).Int("open_findings", data.Findings.OpenCount).Msg("Dashboard data retrieved")
+		log.Info().
+			Int64("tenant_id", userCtx.TenantID).
+			Int("total_assets", data.Assets.TotalAssets).
+			Int("active_assets", data.Assets.ActiveAssets).
+			Int("open_findings", data.Findings.OpenCount).
+			Int("suppressed_findings", data.Findings.SuppressedCount).
+			Str("intel_sync_status", data.IntelSync.Status).
+			Msg("Dashboard data retrieved successfully")
+
+		// Log warnings for potential issues
+		if data.Assets.TotalAssets == 0 {
+			log.Warn().Int64("tenant_id", userCtx.TenantID).Msg("Dashboard shows 0 total assets - materialized views may not be populated")
+		}
+		if data.Findings.OpenCount == 0 && data.Assets.TotalAssets > 0 {
+			log.Info().Int64("tenant_id", userCtx.TenantID).Msg("Dashboard shows 0 open findings - this may be expected if no vulnerabilities found")
+		}
 
 		respondWithDashboard(w, data)
 	}

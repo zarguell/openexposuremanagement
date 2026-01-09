@@ -10,6 +10,10 @@ function Dashboard() {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
+  console.log('Dashboard data:', dashboard);
+  console.log('Dashboard loading:', isLoading);
+  console.log('Dashboard error:', error);
+
   const { data: intelStatus } = useQuery({
     queryKey: ['intel-status'],
     queryFn: apiClient.getIntelStatus,
@@ -71,18 +75,18 @@ function Dashboard() {
             Assets
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6' }}>
-                {dashboard?.asset_counts?.total || 0}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
-                {dashboard?.asset_counts?.active || 0}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Active</div>
-            </div>
+             <div style={{ textAlign: 'center' }}>
+               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                 {dashboard?.Assets?.TotalAssets || 0}
+               </div>
+               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total</div>
+             </div>
+             <div style={{ textAlign: 'center' }}>
+               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+                 {dashboard?.Assets?.ActiveAssets || 0}
+               </div>
+               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Active</div>
+             </div>
           </div>
         </div>
 
@@ -96,20 +100,20 @@ function Dashboard() {
           <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
             Findings
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
-                {dashboard?.finding_counts?.open || 0}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Open</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
-                {dashboard?.finding_counts?.fixed || 0}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Fixed</div>
-            </div>
-          </div>
+           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+             <div style={{ textAlign: 'center' }}>
+               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
+                 {dashboard?.Findings?.OpenCount || 0}
+               </div>
+               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Open</div>
+             </div>
+             <div style={{ textAlign: 'center' }}>
+               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+                 {dashboard?.Findings?.SuppressedCount || 0}
+               </div>
+               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Suppressed</div>
+             </div>
+           </div>
         </div>
 
         {/* Threat Intel Status */}

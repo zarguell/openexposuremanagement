@@ -87,11 +87,42 @@ func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ready"}`))
 }
 
+// loggingMiddleware logs all HTTP requests
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Create a response writer wrapper to capture status code
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start)
+		log.Info().
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Int("status", rw.statusCode).
+			Dur("duration", duration).
+			Msg("HTTP request")
+	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 // ListenAndServe starts the HTTP server
 func (s *Server) ListenAndServe() error {
 	s.httpServer = &http.Server{
 		Addr:         s.cfg.Addr(),
-		Handler:      s.router,
+		Handler:      loggingMiddleware(s.router),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

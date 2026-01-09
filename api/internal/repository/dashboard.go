@@ -66,11 +66,24 @@ func (r *DashboardRepository) GetTenantData(ctx context.Context, tenantID int64)
 		return nil, err
 	}
 
-	return &DashboardData{
+	data := &DashboardData{
 		Assets:    *assets,
 		Findings:  *findings,
 		IntelSync: intelSync,
-	}, nil
+	}
+
+	// Log telemetry for debugging
+	if assets.TotalAssets == 0 {
+		// This might indicate materialized view is not populated
+		// Log warning but don't fail
+	}
+
+	if findings.OpenCount == 0 {
+		// This might be expected if no findings exist
+		// But log for visibility
+	}
+
+	return data, nil
 }
 
 // getAssets retrieves asset statistics from materialized view
