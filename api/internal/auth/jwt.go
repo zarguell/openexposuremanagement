@@ -1,13 +1,21 @@
 package auth
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+// UserContextKey is the key used to store user context in the request
+const UserContextKey contextKey = "user"
 
 // JWTValidator handles JWT token validation
 type JWTValidator struct {
@@ -115,13 +123,13 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*Claims, error) {
 
 // UserContext represents authenticated user context
 type UserContext struct {
-	UserID    string
-	Email     string
-	Name      string
-	TenantID  string
-	Roles     []string
-	Token     string
-	Claims    *Claims
+	UserID   string
+	Email    string
+	Name     string
+	TenantID int64
+	Roles    []string
+	Token    string
+	Claims   *Claims
 }
 
 // AuthMiddleware creates authentication middleware
@@ -162,14 +170,13 @@ func (v *JWTValidator) AuthMiddleware(next http.Handler) http.Handler {
 			Token:    tokenString,
 			Claims:   claims,
 			Roles:    []string{"analyst"}, // TODO: Fetch from database
-			TenantID: "1",                 // TODO: Fetch from database
+			TenantID: 1,                  // TODO: Fetch from database (demo mode)
 		}
 
 		// Add to request context
-		// TODO: Use proper context package
-		_ = userCtx
+		ctx := context.WithValue(r.Context(), UserContextKey, userCtx)
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -197,4 +204,31 @@ func (v *JWTValidator) fetchJWKS() (*JWKSResponse, error) {
 	// 4. Handle key rotation
 
 	return nil, fmt.Errorf("JWKS fetching not yet implemented")
+}
+
+// GetUserContext retrieves the user context from the request
+func GetUserContext(r *http.Request) (*UserContext, error) {
+	userCtx, ok := r.Context().Value(UserContextKey).(*UserContext)
+	if !ok || userCtx == nil {
+		return nil, fmt.Errorf("no user context found in request")
+	}
+	return userCtx, nil
+}
+
+// GetTenantID retrieves the tenant ID from the request context
+func GetTenantID(r *http.Request) (int64, error) {
+	userCtx, err := GetUserContext(r)
+	if err != nil {
+		return 0, err
+	}
+	return userCtx.TenantID, nil
+}
+
+// ParseTenantID parses a tenant ID from string to int64
+func ParseTenantID(tenantIDStr string) (int64, error) {
+	tenantID, err := strconv.ParseInt(tenantIDStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	return tenantID, nil
 }

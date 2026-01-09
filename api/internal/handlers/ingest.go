@@ -1,0 +1,203 @@
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/openexposuremanagement/oem/internal/auth"
+	"github.com/openexposuremanagement/oem/internal/ingest"
+	"github.com/rs/zerolog/log"
+)
+
+// IngestVMFindings handles POST /ingest/vm/findings
+func IngestVMFindings(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Only accept POST
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Decode payload
+		var payload ingest.VMFindingsPayload
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to decode request body")
+			respondWithError(w, http.StatusBadRequest, "Invalid JSON")
+			return
+		}
+
+		// Validate payload
+		err = payload.Validate()
+		if err != nil {
+			log.Error().Err(err).Msg("Payload validation failed")
+			respondWithValidationError(w, err)
+			return
+		}
+
+		// Extract tenant context from request
+		userCtx, err := auth.GetUserContext(r)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get user context")
+			respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		// TODO: Validate API key has ingest:vm scope
+		// TODO: Enforce source binding if API key has bound_source
+
+		// Parse scanned_at if provided
+		scannedAt := time.Now()
+		if !payload.ScannedAt.IsZero() {
+			scannedAt = payload.ScannedAt
+		}
+
+		// Process findings
+		summary, err := processVMFindings(ctx, db, userCtx.TenantID, payload.Source, payload.Findings, scannedAt)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to process findings")
+			respondWithError(w, http.StatusInternalServerError, "Failed to process findings")
+			return
+		}
+
+		// Respond with success
+		respondWithSuccess(w, summary)
+	}
+}
+
+// processVMFindings processes a batch of VM findings
+func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source string, findings []ingest.VMFinding, scannedAt time.Time) (*IngestSummary, error) {
+	summary := &IngestSummary{
+		TotalFindings: len(findings),
+	}
+
+	// Process each finding
+	for i, finding := range findings {
+		log.Debug().
+			Int("index", i).
+			Str("source", source).
+			Str("hostname", finding.Asset.Hostname).
+			Msg("Processing finding")
+
+		// 1. Upsert asset
+		assetResult, err := ingest.UpsertAsset(ctx, db, tenantID, source, &finding.Asset, scannedAt)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("index", i).
+				Msg("Failed to upsert asset")
+			return nil, fmt.Errorf("failed to upsert asset for finding %d: %w", i, err)
+		}
+
+		if assetResult.NewAsset {
+			summary.AssetsCreated++
+		} else {
+			summary.AssetsUpdated++
+		}
+
+		// 2. Upsert definition and CVE aliases
+		err = ingest.UpsertDefinitionWithAliases(ctx, db, source, &finding)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("index", i).
+				Msg("Failed to upsert definition")
+			return nil, fmt.Errorf("failed to upsert definition for finding %d: %w", i, err)
+		}
+
+		// Generate definition UID
+		definitionUID := ingest.GenerateDefinitionUID(source, finding.Finding.DefinitionID)
+		summary.DefinitionsProcessed++
+
+		// 3. Upsert finding instance
+		err = ingest.UpsertFindingInstance(ctx, db, tenantID, assetResult.Asset.ID, definitionUID, &finding)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("index", i).
+				Msg("Failed to upsert finding instance")
+			return nil, fmt.Errorf("failed to upsert finding instance %d: %w", i, err)
+		}
+
+		summary.FindingsUpserted++
+
+		log.Info().
+			Int64("asset_id", assetResult.Asset.ID).
+			Str("definition_uid", definitionUID).
+			Str("match_reason", string(assetResult.Reason)).
+			Int("index", i).
+			Msg("Successfully processed finding")
+	}
+
+	return summary, nil
+}
+
+// IngestSummary represents the summary of ingestion results
+type IngestSummary struct {
+	TotalFindings      int `json:"total_findings"`
+	AssetsCreated      int `json:"assets_created"`
+	AssetsUpdated      int `json:"assets_updated"`
+	DefinitionsProcessed int `json:"definitions_processed"`
+	FindingsUpserted   int `json:"findings_upserted"`
+}
+
+// respondWithSuccess sends a successful response
+func respondWithSuccess(w http.ResponseWriter, summary *IngestSummary) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Findings ingested successfully",
+		"summary": summary,
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+// respondWithError sends an error response
+func respondWithError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	response := map[string]interface{}{
+		"error": message,
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+// respondWithValidationError sends a validation error response
+func respondWithValidationError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	// Check if it's a ValidationError
+	var validationErr ingest.ValidationError
+	if errors.As(err, &validationErr) {
+		response := map[string]interface{}{
+			"error": "Validation failed",
+			"details": map[string]interface{}{
+				"field":   validationErr.Field,
+				"message": validationErr.Message,
+				"index":   validationErr.Index,
+			},
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// Generic error
+	response := map[string]interface{}{
+		"error":   "Validation failed",
+		"message": err.Error(),
+	}
+	json.NewEncoder(w).Encode(response)
+}

@@ -173,13 +173,13 @@ func TestUserContext(t *testing.T) {
 		}
 
 		userCtx := &UserContext{
-			UserID:  claims.Subject,
-			Email:   claims.Email,
-			Name:    claims.Name,
-			Token:   "test-token",
-			Claims:  claims,
-			Roles:   []string{"analyst"},
-			TenantID: "1",
+			UserID:   claims.Subject,
+			Email:    claims.Email,
+			Name:     claims.Name,
+			Token:    "test-token",
+			Claims:   claims,
+			Roles:    []string{"analyst"},
+			TenantID: 1,
 		}
 
 		if userCtx.UserID != "user-123" {
@@ -187,6 +187,9 @@ func TestUserContext(t *testing.T) {
 		}
 		if userCtx.Email != "user@example.com" {
 			t.Errorf("expected Email 'user@example.com', got '%s'", userCtx.Email)
+		}
+		if userCtx.TenantID != 1 {
+			t.Errorf("expected TenantID 1, got %d", userCtx.TenantID)
 		}
 	})
 }
