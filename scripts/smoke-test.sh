@@ -90,18 +90,34 @@ fi
 # Run database migrations
 echo ""
 echo "🗄️  Running database migrations..."
-if command -v docker-compose &> /dev/null; then
-    docker-compose exec -T api migrate -path db/migrations -database "$DATABASE_URL" up
-else
-    docker compose exec -T api migrate -path db/migrations -database "$DATABASE_URL" up
-fi
 
-print_status "Database migrations completed"
+# Set DATABASE_URL for migrations (connects to postgres container exposed on host)
+export DATABASE_URL="${DATABASE_URL:-postgres://oem:password@localhost:5432/oem?sslmode=disable}"
+
+# Check if migrate is available on host
+if command -v migrate &> /dev/null; then
+    echo "Using DATABASE_URL: $DATABASE_URL"
+    migrate -path db/migrations -database "$DATABASE_URL" up
+    print_status "Database migrations completed"
+else
+    print_error "migrate tool not found on host."
+    echo ""
+    echo "Please install golang-migrate:"
+    echo "  go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest"
+    echo ""
+    echo "Or run migrations manually:"
+    echo "  export DATABASE_URL='postgres://oem:password@localhost:5432/oem?sslmode=disable'"
+    echo "  make migrate-up"
+    echo ""
+    exit 1
+fi
 
 # Seed sample data
 echo ""
 echo "🌱 Seeding sample data..."
 if [ -f "scripts/seed-data.go" ]; then
+    # Wait a bit more for API to be fully ready
+    sleep 5
     cd scripts && go run seed-data.go -api-url="http://localhost:8080" -demo -verbose
     cd ..
     print_status "Sample data seeded"
@@ -149,20 +165,26 @@ fi
 echo ""
 echo "📊 Validating seeded data..."
 
-# Check if assets were created
-ASSET_COUNT=$(curl -s "http://localhost:8080/api/v1/assets" | jq '.pagination.total // 0' 2>/dev/null || echo "0")
-if [ "$ASSET_COUNT" -gt 0 ]; then
-    print_status "Assets data validated ($ASSET_COUNT assets found)"
-else
-    print_warning "No assets found - data seeding may have failed"
-fi
+# Check if jq is available for JSON parsing
+if command -v jq &> /dev/null; then
+    # Check if assets were created
+    ASSET_COUNT=$(curl -s "http://localhost:8080/api/v1/assets" | jq '.pagination.total // 0' 2>/dev/null || echo "0")
+    if [ "$ASSET_COUNT" -gt 0 ]; then
+        print_status "Assets data validated ($ASSET_COUNT assets found)"
+    else
+        print_warning "No assets found - data seeding may have failed"
+    fi
 
-# Check if findings were created
-FINDING_COUNT=$(curl -s "http://localhost:8080/api/v1/findings" | jq '.total // 0' 2>/dev/null || echo "0")
-if [ "$FINDING_COUNT" -gt 0 ]; then
-    print_status "Findings data validated ($FINDING_COUNT findings found)"
+    # Check if findings were created
+    FINDING_COUNT=$(curl -s "http://localhost:8080/api/v1/findings" | jq '.total // 0' 2>/dev/null || echo "0")
+    if [ "$FINDING_COUNT" -gt 0 ]; then
+        print_status "Findings data validated ($FINDING_COUNT findings found)"
+    else
+        print_warning "No findings found - data seeding may have failed"
+    fi
 else
-    print_warning "No findings found - data seeding may have failed"
+    print_warning "jq not available for JSON parsing - skipping data validation"
+    print_warning "Install jq for better validation: apt-get install jq or brew install jq"
 fi
 
 echo ""

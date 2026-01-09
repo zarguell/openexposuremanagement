@@ -74,6 +74,7 @@ make seed
 - Go 1.21+
 - Node.js 20+
 - Make
+- golang-migrate (for database migrations): `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`
 
 ### Directory Structure
 
