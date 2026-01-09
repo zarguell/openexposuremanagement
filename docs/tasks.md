@@ -361,14 +361,14 @@ Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings with NVD enric
   - **Dependencies:** Repo & dev baseline → Add docker-compose baseline (api, postgres, ui)
   - **Estimated tokens:** 2400
 
-- [ ] Task: Implement OIDC Auth Code + PKCE login flow
+- [x] Task: Implement OIDC Auth Code + PKCE login flow
   - **Description:** Add OIDC client in SPA using Authorization Code + PKCE for a public client (no client secret) and bearer token usage.[2]
   - **Acceptance criteria:** Login redirects to IdP and back; access token stored in memory; refresh triggers re-auth redirect.
   - **Validation command:** `cd ui && npm run build`
   - **Dependencies:** Bootstrap Vite React app with routing and env config
   - **Estimated tokens:** 3000
 
-- [ ] Task: Add React Query + API client with auth header
+- [x] Task: Add React Query + API client with auth header
   - **Description:** Implement typed API client, React Query providers, and automatic `Authorization: Bearer` injection.
   - **Acceptance criteria:** Queries retry sensibly; 401 triggers re-login; errors are shown.
   - **Validation command:** `cd ui && npm run build`
