@@ -116,7 +116,10 @@ func TestJWTValidator_AuthMiddleware(t *testing.T) {
 
 	t.Run("rejects request without Authorization header", func(t *testing.T) {
 		validator := NewJWTValidator("", "")
-		middleware := validator.AuthMiddleware(nil)
+		dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		middleware := validator.AuthMiddleware(dummyHandler)
 
 		req := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
@@ -130,7 +133,6 @@ func TestJWTValidator_AuthMiddleware(t *testing.T) {
 
 	t.Run("rejects request with malformed Authorization header", func(t *testing.T) {
 		validator := NewJWTValidator("", "")
-		middleware := validator.AuthMiddleware(nil)
 
 		testCases := []struct {
 			name           string
@@ -143,6 +145,11 @@ func TestJWTValidator_AuthMiddleware(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
+				dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})
+				middleware := validator.AuthMiddleware(dummyHandler)
+
 				req := httptest.NewRequest("GET", "/test", nil)
 				req.Header.Set("Authorization", tc.authHeader)
 				w := httptest.NewRecorder()
