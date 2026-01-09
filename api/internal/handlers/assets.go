@@ -3,16 +3,12 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/openexposuremanagement/oem/internal/auth"
 	"github.com/openexposuremanagement/oem/internal/repository"
 	"github.com/rs/zerolog/log"
 )
-
-const defaultLimit = 50
-const maxLimit = 500
 
 // ListAssets handles GET /assets
 func ListAssets(db *sqlx.DB) http.HandlerFunc {
@@ -110,46 +106,6 @@ func GetAssetByID(db *sqlx.DB) http.HandlerFunc {
 	}
 }
 
-// parseLimit parses and validates the limit parameter
-func parseLimit(limitStr string) (int, error) {
-	if limitStr == "" {
-		return defaultLimit, nil
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid limit: %w", err)
-	}
-
-	if limit < 0 {
-		return 0, fmt.Errorf("limit cannot be negative")
-	}
-
-	if limit > maxLimit {
-		return maxLimit, nil
-	}
-
-	return limit, nil
-}
-
-// parseOffset parses and validates the offset parameter
-func parseOffset(offsetStr string) (int, error) {
-	if offsetStr == "" {
-		return 0, nil
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid offset: %w", err)
-	}
-
-	if offset < 0 {
-		return 0, fmt.Errorf("offset cannot be negative")
-	}
-
-	return offset, nil
-}
-
 // parseAssetID extracts the asset ID from the URL path
 func parseAssetID(path string) (int64, error) {
 	// Expected path format: /api/v1/assets/{id}
@@ -168,10 +124,10 @@ func respondWithAssetList(w http.ResponseWriter, result *repository.AssetListRes
 	setJSONHeaders(w)
 	response := map[string]interface{}{
 		"assets": result.Assets,
-		"pagination": map[string]interface{}{
-			"total":  result.Total,
-			"limit":  result.Limit,
-			"offset": result.Offset,
+		"pagination": Pagination{
+			Total:  result.Total,
+			Limit:  result.Limit,
+			Offset: result.Offset,
 		},
 	}
 	respondJSON(w, http.StatusOK, response)

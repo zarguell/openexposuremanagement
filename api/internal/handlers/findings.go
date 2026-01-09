@@ -90,10 +90,10 @@ func respondWithEnrichedFindingsList(w http.ResponseWriter, result *repository.E
 	setJSONHeaders(w)
 	response := map[string]interface{}{
 		"findings": result.Findings,
-		"pagination": map[string]interface{}{
-			"total":  result.Total,
-			"limit":  result.Limit,
-			"offset": result.Offset,
+		"pagination": Pagination{
+			Total:  result.Total,
+			Limit:  result.Limit,
+			Offset: result.Offset,
 		},
 	}
 	respondJSON(w, http.StatusOK, response)

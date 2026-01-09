@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -68,7 +67,7 @@ func IngestVMFindings(db *sqlx.DB) http.HandlerFunc {
 		}
 
 		// Respond with success
-		respondWithSuccess(w, summary)
+		respondWithIngestSuccess(w, summary)
 	}
 }
 
@@ -146,19 +145,8 @@ type IngestSummary struct {
 	FindingsUpserted     int `json:"findings_upserted"`
 }
 
-// setJSONHeaders sets common JSON response headers
-func setJSONHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-}
-
-// respondJSON sends a JSON response with the given status code
-func respondJSON(w http.ResponseWriter, status int, response interface{}) error {
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(response)
-}
-
-// respondWithSuccess sends a successful response
-func respondWithSuccess(w http.ResponseWriter, summary *IngestSummary) {
+// respondWithIngestSuccess sends a successful ingestion response
+func respondWithIngestSuccess(w http.ResponseWriter, summary *IngestSummary) {
 	setJSONHeaders(w)
 	response := map[string]interface{}{
 		"status":  "success",
@@ -166,40 +154,4 @@ func respondWithSuccess(w http.ResponseWriter, summary *IngestSummary) {
 		"summary": summary,
 	}
 	respondJSON(w, http.StatusOK, response)
-}
-
-// respondWithError sends an error response
-func respondWithError(w http.ResponseWriter, status int, message string) {
-	setJSONHeaders(w)
-	response := map[string]interface{}{
-		"error": message,
-	}
-	respondJSON(w, status, response)
-}
-
-// respondWithValidationError sends a validation error response
-func respondWithValidationError(w http.ResponseWriter, err error) {
-	setJSONHeaders(w)
-
-	// Check if it's a ValidationError
-	var validationErr ingest.ValidationError
-	if errors.As(err, &validationErr) {
-		response := map[string]interface{}{
-			"error": "Validation failed",
-			"details": map[string]interface{}{
-				"field":   validationErr.Field,
-				"message": validationErr.Message,
-				"index":   validationErr.Index,
-			},
-		}
-		respondJSON(w, http.StatusBadRequest, response)
-		return
-	}
-
-	// Generic error
-	response := map[string]interface{}{
-		"error":   "Validation failed",
-		"message": err.Error(),
-	}
-	respondJSON(w, http.StatusBadRequest, response)
 }
