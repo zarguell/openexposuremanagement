@@ -52,6 +52,27 @@ services:
       - oem-network
     restart: unless-stopped
 
+  test-postgres:
+    image: postgres:16-alpine
+    container_name: oem-test-postgres
+    environment:
+      POSTGRES_USER: oem
+      POSTGRES_PASSWORD: oem
+      POSTGRES_DB: oem_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - test-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oem-network
+    profiles:
+      - test
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: oem-pgadmin
@@ -68,6 +89,7 @@ services:
 
 volumes:
   postgres-data:
+  test-postgres-data:
 
 networks:
   oem-network:

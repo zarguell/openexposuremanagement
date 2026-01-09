@@ -185,3 +185,79 @@ func TestIsValidIPv4(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeIP(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "IPv4 address",
+			input:    "192.168.1.1",
+			expected: "192.168.1.1",
+		},
+		{
+			name:     "IPv6 address",
+			input:    "2001:DB8::1",
+			expected: "2001:db8::1",
+		},
+		{
+			name:     "IP with spaces",
+			input:    "  192.168.1.1  ",
+			expected: "192.168.1.1",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NormalizeIP(tt.input)
+			if result != tt.expected {
+				t.Errorf("NormalizeIP() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeExternalID(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "external ID",
+			input:    "ABC123",
+			expected: "abc123",
+		},
+		{
+			name:     "external ID with spaces",
+			input:    "  ABC123  ",
+			expected: "abc123",
+		},
+		{
+			name:     "mixed case",
+			input:    "AbC-123_def",
+			expected: "abc-123_def",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NormalizeExternalID(tt.input)
+			if result != tt.expected {
+				t.Errorf("NormalizeExternalID() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}

@@ -26,7 +26,7 @@ func NewEPSSSyncer(db *sqlx.DB) *EPSSSyncer {
 	}
 }
 
-// SyncResult represents the result of an EPSS sync operation
+// EPSSSyncResult represents the result of an EPSS sync operation
 type EPSSSyncResult struct {
 	TotalProcessed int
 	TotalUpdated   int

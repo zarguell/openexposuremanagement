@@ -26,7 +26,7 @@ func NewKEVSyncer(db *sqlx.DB) *KEVSyncer {
 	}
 }
 
-// SyncResult represents the result of a KEV sync operation
+// KEVSyncResult represents the result of a KEV sync operation
 type KEVSyncResult struct {
 	TotalProcessed int
 	TotalUpdated   int

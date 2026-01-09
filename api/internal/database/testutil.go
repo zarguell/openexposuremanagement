@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // migration file source
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // postgres driver
 )
 
 // SetupTestDB creates a test database connection and runs migrations
@@ -21,7 +21,7 @@ func SetupTestDB(t *testing.T) *sqlx.DB {
 	// Get test database URL from env or use default
 	testDBURL := os.Getenv("TEST_DATABASE_URL")
 	if testDBURL == "" {
-		testDBURL = "postgres://oem:oem@localhost:5432/oem_test?sslmode=disable"
+		testDBURL = "postgres://oem:oem@localhost:5433/oem_test?sslmode=disable"
 	}
 
 	// Connect to test database
@@ -72,8 +72,8 @@ func runMigrations(t *testing.T, db *sqlx.DB, dbURL string) error {
 	// Get migrations path
 	migrationsPath := os.Getenv("MIGRATIONS_PATH")
 	if migrationsPath == "" {
-		// Default to ../../db/migrations relative to this file
-		migrationsPath = "file://../../db/migrations"
+		// Default to ../db/migrations relative to the working directory (api/)
+		migrationsPath = "file://../db/migrations"
 	}
 
 	// Create migrate instance

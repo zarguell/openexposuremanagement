@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	nvdAPIBaseURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+	nvdAPIBaseURL    = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 	defaultRateLimit = 5 * time.Second
 )
 
@@ -53,7 +53,7 @@ type FetchParams struct {
 
 // NVDResponse represents the NVD API v2.0 response structure
 type NVDResponse struct {
-	TotalResults int            `json:"totalResults"`
+	TotalResults    int        `json:"totalResults"`
 	Vulnerabilities []NVDEntry `json:"vulnerabilities"`
 }
 
@@ -82,8 +82,8 @@ type CVSSMetricV31 struct {
 
 // CVSSData contains the actual CVSS score and vector
 type CVSSData struct {
-	Score       float64 `json:"baseScore"`
-	VectorString string `json:"vectorString"`
+	Score        float64 `json:"baseScore"`
+	VectorString string  `json:"vectorString"`
 }
 
 // CVSMetrics represents CVSS score data (simplified for internal use)
@@ -100,8 +100,8 @@ type Description struct {
 
 // Reference represents a CVE reference
 type Reference struct {
-	Source string `json:"source"`
-	URL    string `json:"url"`
+	Source string   `json:"source"`
+	URL    string   `json:"url"`
 	Tags   []string `json:"tags"`
 }
 
@@ -289,13 +289,9 @@ func extractReferences(references []Reference) []string {
 	return result
 }
 
-// ConvertNVDCVEToIntelCVE converts an NVD CVE to IntelCVE format
-func ConvertNVDCVEToIntelCVE(nvdCVE *NVDCVE) *IntelCVE {
-	if nvdCVE == nil {
-		return nil
-	}
-
-	intelCVE := &IntelCVE{
+// ConvertNVDCVEToIntelCVE converts an NVD CVE to CVE format
+func ConvertNVDCVEToIntelCVE(nvdCVE *NVDCVE) *CVE {
+	intelCVE := &CVE{
 		CVE: nvdCVE.ID,
 	}
 
@@ -313,9 +309,9 @@ func ConvertNVDCVEToIntelCVE(nvdCVE *NVDCVE) *IntelCVE {
 	return intelCVE
 }
 
-// IntelCVE represents the shape we use in our database
+// CVE represents the shape we use in our database
 // This is defined here to avoid circular imports with repository package
-type IntelCVE struct {
+type CVE struct {
 	CVE            string
 	Description    string
 	CVSSScore      *float64

@@ -99,6 +99,9 @@ func (r *AssetRepository) GetIdentifiers(ctx context.Context, assetID int64) ([]
 	if err != nil {
 		return nil, err
 	}
+	if identifiers == nil {
+		identifiers = []AssetIdentifier{}
+	}
 	return identifiers, nil
 }
 

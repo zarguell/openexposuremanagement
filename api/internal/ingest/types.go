@@ -1,6 +1,9 @@
 package ingest
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // VMFindingsPayload represents the ingestion payload for VM findings
 type VMFindingsPayload struct {
@@ -141,6 +144,9 @@ func validateFindingDetails(details *VMFindingDetails) error {
 	return nil
 }
 
+// ErrValidation is the base error for validation failures
+var ErrValidation = errors.New("validation error")
+
 // ValidationError represents a validation error
 type ValidationError struct {
 	Field   string
@@ -153,4 +159,9 @@ func (e ValidationError) Error() string {
 		return e.Message
 	}
 	return e.Field + ": " + e.Message
+}
+
+// Unwrap returns the underlying error for error chaining
+func (e ValidationError) Unwrap() error {
+	return ErrValidation
 }

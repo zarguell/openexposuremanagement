@@ -12,13 +12,14 @@ import (
 // MatchReason describes how an asset was matched
 type MatchReason string
 
+// Match reason constants
 const (
-	MatchReasonExternalID MatchReason = "external_id"
-	MatchReasonHostname   MatchReason = "hostname"
-	MatchReasonShortname  MatchReason = "shortname"
-	MatchReasonIPAndHost  MatchReason = "ip_and_hostname"
-	MatchReasonStaticIP   MatchReason = "static_ip"
-	MatchReasonNoMatch    MatchReason = "no_match"
+	MatchReasonExternalID MatchReason = "external_id"     // Asset matched by external ID
+	MatchReasonHostname   MatchReason = "hostname"        // Asset matched by hostname
+	MatchReasonShortname  MatchReason = "shortname"       // Asset matched by shortname
+	MatchReasonIPAndHost  MatchReason = "ip_and_hostname" // Asset matched by IP and hostname
+	MatchReasonStaticIP   MatchReason = "static_ip"       // Asset matched by static IP
+	MatchReasonNoMatch    MatchReason = "no_match"        // No matching asset found
 )
 
 // AssetMatchResult contains the result of asset matching

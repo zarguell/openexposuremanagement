@@ -7,18 +7,16 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+
+	"github.com/openexposuremanagement/oem/internal/database"
 )
 
 // This file uses TDD approach for Asset repository
 // Tests are written FIRST, then implementation
 
 // setupTestDB creates a test database connection
-// TODO: This is a placeholder - we'll implement actual test DB setup
 func setupTestDB(t *testing.T) *sqlx.DB {
-	// For now, return nil to make tests compile
-	// In real implementation, this would create a test database
-	t.Skip("Test database not yet set up - backfill in progress")
-	return nil
+	return database.SetupTestDB(t)
 }
 
 func TestAssetRepository_GetByID(t *testing.T) {
@@ -27,8 +25,27 @@ func TestAssetRepository_GetByID(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant
+		tenantID := database.CreateTestTenant(t, db)
+
+		// Create test asset
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, "test-asset.example.com",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
+		var assetID int64
+		err = db.QueryRow("SELECT id FROM assets WHERE canonical_name = $1", "test-asset.example.com").Scan(&assetID)
+		if err != nil {
+			t.Fatalf("Failed to get asset ID: %v", err)
+		}
+
 		// Test: Get by ID
-		result, err := repo.GetByID(ctx, 123)
+		result, err := repo.GetByID(ctx, assetID)
 
 		// Assert
 		if err != nil {
@@ -37,8 +54,11 @@ func TestAssetRepository_GetByID(t *testing.T) {
 		if result == nil {
 			t.Fatal("expected asset, got nil")
 		}
-		if result.ID != 123 {
-			t.Errorf("expected ID 123, got %d", result.ID)
+		if result.ID != assetID {
+			t.Errorf("expected ID %d, got %d", assetID, result.ID)
+		}
+		if result.CanonicalName != "test-asset.example.com" {
+			t.Errorf("expected canonical name 'test-asset.example.com', got %s", result.CanonicalName)
 		}
 	})
 
@@ -66,8 +86,22 @@ func TestAssetRepository_GetByCanonicalName(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant
+		tenantID := database.CreateTestTenant(t, db)
+
+		// Create test asset
+		canonicalName := "test-canonical.example.com"
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, canonicalName,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
 		// Test
-		result, err := repo.GetByCanonicalName(ctx, 1, "test-asset.example.com")
+		result, err := repo.GetByCanonicalName(ctx, tenantID, canonicalName)
 
 		// Assert
 		if err != nil {
@@ -76,11 +110,11 @@ func TestAssetRepository_GetByCanonicalName(t *testing.T) {
 		if result == nil {
 			t.Fatal("expected asset, got nil")
 		}
-		if result.TenantID != 1 {
-			t.Errorf("expected tenant ID 1, got %d", result.TenantID)
+		if result.TenantID != tenantID {
+			t.Errorf("expected tenant ID %d, got %d", tenantID, result.TenantID)
 		}
-		if result.CanonicalName != "test-asset.example.com" {
-			t.Errorf("expected canonical name 'test-asset.example.com', got '%s'", result.CanonicalName)
+		if result.CanonicalName != canonicalName {
+			t.Errorf("expected canonical name '%s', got '%s'", canonicalName, result.CanonicalName)
 		}
 	})
 
@@ -89,8 +123,20 @@ func TestAssetRepository_GetByCanonicalName(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant and asset
+		tenantID := database.CreateTestTenant(t, db)
+		canonicalName := "test-tenant-isolation.example.com"
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, canonicalName,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
 		// Test: Try to get asset from different tenant
-		result, err := repo.GetByCanonicalName(ctx, 2, "test-asset.example.com")
+		result, err := repo.GetByCanonicalName(ctx, tenantID+1, canonicalName)
 
 		// Assert
 		if err == nil {
@@ -108,9 +154,12 @@ func TestAssetRepository_Create(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant
+		tenantID := database.CreateTestTenant(t, db)
+
 		// Setup: Asset to create
 		asset := &Asset{
-			TenantID:      1,
+			TenantID:      tenantID,
 			CanonicalName: "new-asset.example.com",
 			FirstSeenAt:   time.Now(),
 			LastSeenAt:    time.Now(),
@@ -140,9 +189,12 @@ func TestAssetRepository_Create(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant
+		tenantID := database.CreateTestTenant(t, db)
+
 		// Setup: Create first asset
 		asset1 := &Asset{
-			TenantID:      1,
+			TenantID:      tenantID,
 			CanonicalName: "duplicate.example.com",
 			FirstSeenAt:   time.Now(),
 			LastSeenAt:    time.Now(),
@@ -152,7 +204,7 @@ func TestAssetRepository_Create(t *testing.T) {
 
 		// Test: Try to create duplicate
 		asset2 := &Asset{
-			TenantID:      1,
+			TenantID:      tenantID,
 			CanonicalName: "duplicate.example.com",
 			FirstSeenAt:   time.Now(),
 			LastSeenAt:    time.Now(),
@@ -173,11 +225,28 @@ func TestAssetRepository_UpdateLastSeen(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant and asset
+		tenantID := database.CreateTestTenant(t, db)
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, "update-test.example.com",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
+		var assetID int64
+		err = db.QueryRow("SELECT id FROM assets WHERE canonical_name = $1", "update-test.example.com").Scan(&assetID)
+		if err != nil {
+			t.Fatalf("Failed to get asset ID: %v", err)
+		}
+
 		// Setup
 		lastSeen := time.Now().Add(-1 * time.Hour)
 
 		// Test: Update last seen
-		err := repo.UpdateLastSeen(ctx, 123, lastSeen)
+		err = repo.UpdateLastSeen(ctx, assetID, lastSeen)
 
 		// Assert
 		if err != nil {
@@ -185,9 +254,9 @@ func TestAssetRepository_UpdateLastSeen(t *testing.T) {
 		}
 
 		// Verify: Fetch asset and check timestamp
-		asset, _ := repo.GetByID(ctx, 123)
+		asset, _ := repo.GetByID(ctx, assetID)
 		if asset.LastSeenAt.Unix() != lastSeen.Unix() {
-			t.Errorf("expected LastSeenAt to be updated")
+			t.Errorf("expected LastSeenAt to be updated to %v, got %v", lastSeen, asset.LastSeenAt)
 		}
 	})
 }
@@ -198,10 +267,27 @@ func TestAssetRepository_AddIdentifier(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant and asset
+		tenantID := database.CreateTestTenant(t, db)
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, "identifier-test.example.com",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
+		var assetID int64
+		err = db.QueryRow("SELECT id FROM assets WHERE canonical_name = $1", "identifier-test.example.com").Scan(&assetID)
+		if err != nil {
+			t.Fatalf("Failed to get asset ID: %v", err)
+		}
+
 		// Setup
 		identifier := &AssetIdentifier{
-			TenantID:    1,
-			AssetID:     123,
+			TenantID:    tenantID,
+			AssetID:     assetID,
 			IDType:      "hostname_norm",
 			IDValue:     "test-server.example.com",
 			FirstSeenAt: time.Now(),
@@ -210,7 +296,7 @@ func TestAssetRepository_AddIdentifier(t *testing.T) {
 		}
 
 		// Test
-		err := repo.AddIdentifier(ctx, identifier)
+		err = repo.AddIdentifier(ctx, identifier)
 
 		// Assert
 		if err != nil {
@@ -228,8 +314,36 @@ func TestAssetRepository_GetIdentifiers(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
+		// Create test tenant and asset
+		tenantID := database.CreateTestTenant(t, db)
+		_, err := db.Exec(
+			`INSERT INTO assets (tenant_id, canonical_name, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())`,
+			tenantID, "identifiers-test.example.com",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test asset: %v", err)
+		}
+
+		var assetID int64
+		err = db.QueryRow("SELECT id FROM assets WHERE canonical_name = $1", "identifiers-test.example.com").Scan(&assetID)
+		if err != nil {
+			t.Fatalf("Failed to get asset ID: %v", err)
+		}
+
+		// Add some identifiers
+		_, err = db.Exec(
+			`INSERT INTO asset_identifiers (tenant_id, asset_id, id_type, id_value, source, first_seen_at, last_seen_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW()), ($1, $2, $6, $7, $8, NOW(), NOW())`,
+			tenantID, assetID, "hostname_norm", "test-server.example.com", "tenable",
+			"ip", "192.168.1.1", "tenable",
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test identifiers: %v", err)
+		}
+
 		// Test
-		identifiers, err := repo.GetIdentifiers(ctx, 123)
+		identifiers, err := repo.GetIdentifiers(ctx, assetID)
 
 		// Assert
 		if err != nil {
@@ -238,8 +352,8 @@ func TestAssetRepository_GetIdentifiers(t *testing.T) {
 		if identifiers == nil {
 			t.Fatal("expected identifiers slice, got nil")
 		}
-		if len(identifiers) == 0 {
-			t.Error("expected at least one identifier, got empty slice")
+		if len(identifiers) != 2 {
+			t.Errorf("expected 2 identifiers, got %d", len(identifiers))
 		}
 	})
 
@@ -248,8 +362,8 @@ func TestAssetRepository_GetIdentifiers(t *testing.T) {
 		repo := NewAssetRepository(db)
 		ctx := context.Background()
 
-		// Test
-		identifiers, err := repo.GetIdentifiers(ctx, 999)
+		// Test with non-existent asset ID
+		identifiers, err := repo.GetIdentifiers(ctx, 999999)
 
 		// Assert
 		if err != nil {

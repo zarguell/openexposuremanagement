@@ -12,8 +12,8 @@ import (
 
 // NVDSyncer handles syncing CVE data from NVD to the database
 type NVDSyncer struct {
-	client   *NVDClient
-	repo     *repository.IntelRepository
+	client    *NVDClient
+	repo      *repository.IntelRepository
 	batchSize int
 }
 
@@ -214,7 +214,7 @@ func (s *NVDSyncer) failSync(ctx context.Context, syncRunID int, err error) {
 
 // convertToRepoIntelCVE converts an NVDCVE to repository.IntelCVE
 func convertToRepoIntelCVE(nvdCVE NVDCVE) *repository.IntelCVE {
-	intelCVE := &IntelCVE{
+	intelCVE := &CVE{
 		CVE: nvdCVE.ID,
 	}
 
