@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
+import LoadingSpinner from '../components/LoadingSpinner';
+import SearchInput from '../components/SearchInput';
+import StatusBadge from '../components/StatusBadge';
+import Pagination from '../components/Pagination';
 
 function Assets() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,8 +20,7 @@ function Assets() {
     }),
   });
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = () => {
     setCurrentPage(0);
     refetch();
   };
@@ -25,24 +28,7 @@ function Assets() {
   if (isLoading) {
     return (
       <div style={{ padding: '1.5rem 1rem' }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ color: '#6b7280', marginTop: '1rem' }}>Loading assets...</p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+        <LoadingSpinner message="Loading assets..." />
       </div>
     );
   }
@@ -85,37 +71,12 @@ function Assets() {
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         marginBottom: '1.5rem'
       }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ flex: 1 }}>
-            <input
-              type="text"
-              placeholder="Search assets by hostname or canonical name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                fontSize: '1rem'
-              }}
-            />
-          </div>
-          <button
-            type="submit"
-            style={{
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '0.375rem',
-              border: 'none',
-              fontSize: '1rem',
-              cursor: 'pointer'
-            }}
-          >
-            Search
-          </button>
-        </form>
+        <SearchInput
+          placeholder="Search assets by hostname or canonical name..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSubmit={handleSearch}
+        />
       </div>
 
       {/* Results */}
@@ -175,16 +136,10 @@ function Assets() {
                         {asset.last_seen_at ? new Date(asset.last_seen_at).toLocaleDateString() : 'Unknown'}
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: asset.is_active ? '#d1fae5' : '#fef3c7',
-                          color: asset.is_active ? '#065f46' : '#92400e'
-                        }}>
-                          {asset.is_active ? 'Active' : 'Inactive'}
-                        </span>
+                        <StatusBadge
+                          status={asset.is_active ? 'Active' : 'Inactive'}
+                          variant="status"
+                        />
                       </td>
                     </tr>
                   ))}
@@ -194,47 +149,12 @@ function Assets() {
 
             {/* Pagination */}
             {data?.pagination && data.pagination.total > pageSize && (
-              <div style={{
-                padding: '1rem 1.5rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'between',
-                alignItems: 'center'
-              }}>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, data.pagination.total)} of {data.pagination.total} assets
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      backgroundColor: currentPage === 0 ? '#f9fafb' : 'white',
-                      color: currentPage === 0 ? '#9ca3af' : '#374151',
-                      cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={(currentPage + 1) * pageSize >= data.pagination.total}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      backgroundColor: (currentPage + 1) * pageSize >= data.pagination.total ? '#f9fafb' : 'white',
-                      color: (currentPage + 1) * pageSize >= data.pagination.total ? '#9ca3af' : '#374151',
-                      cursor: (currentPage + 1) * pageSize >= data.pagination.total ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalItems={data.pagination.total}
+                itemsPerPage={pageSize}
+                onPageChange={setCurrentPage}
+              />
             )}
           </>
         )}
@@ -243,4 +163,4 @@ function Assets() {
   );
 }
 
-export default Assets
+export default Assets;

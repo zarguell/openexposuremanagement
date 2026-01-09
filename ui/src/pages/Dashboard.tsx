@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
+import LoadingSpinner from '../components/LoadingSpinner';
+import StatusBadge from '../components/StatusBadge';
 
 function Dashboard() {
   const { data: dashboard, isLoading, error } = useQuery({
@@ -17,24 +19,7 @@ function Dashboard() {
   if (isLoading) {
     return (
       <div style={{ padding: '1.5rem 1rem' }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ color: '#6b7280', marginTop: '1rem' }}>Loading dashboard...</p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+        <LoadingSpinner message="Loading dashboard..." />
       </div>
     );
   }
@@ -119,7 +104,7 @@ function Dashboard() {
               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Open</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f59e0b' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
                 {dashboard?.finding_counts?.fixed || 0}
               </div>
               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Fixed</div>
@@ -152,12 +137,11 @@ function Dashboard() {
                   {source.toUpperCase()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: status.last_sync_at ? '#10b981' : '#6b7280'
-                  }}></div>
+                  <StatusBadge
+                    status={status.last_sync_at ? 'Active' : 'Inactive'}
+                    variant="status"
+                    size="sm"
+                  />
                   <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                     {status.last_sync_at ?
                       new Date(status.last_sync_at).toLocaleDateString() :

@@ -342,73 +342,12 @@ Implement CVE-level suppression proposal flow and async effective-status recompu
   - **Dependencies:** Implement approve/reject/revoke endpoints (admin)
   - **Estimated tokens:** 2400
 
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Consolidate state machine logic and audit writing; reduce duplicated transaction code.
-  - **Acceptance criteria:** Tests pass; lint passes; state transitions clearly centralized.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in "Suppressions (proposal/approval + recompute)"
-  - **Estimated tokens:** 1600
-
-***
-
-## Milestone: React SPA (login + core pages)
-Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings with NVD enrichment; reset context after this milestone.
-
-- [x] Task: Bootstrap Vite React app with routing and env config
-  - **Description:** Set up Vite React SPA, router, API base URL config, and error boundary.
-  - **Acceptance criteria:** App starts; routes render; config is environment-driven.
-  - **Validation command:** `cd ui && npm test` (or `npm run build`)
-  - **Dependencies:** Repo & dev baseline → Add docker-compose baseline (api, postgres, ui)
-  - **Estimated tokens:** 2400
-
-- [x] Task: Implement OIDC Auth Code + PKCE login flow
-  - **Description:** Add OIDC client in SPA using Authorization Code + PKCE for a public client (no client secret) and bearer token usage.[2]
-  - **Acceptance criteria:** Login redirects to IdP and back; access token stored in memory; refresh triggers re-auth redirect.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Bootstrap Vite React app with routing and env config
-  - **Estimated tokens:** 3000
-
-- [x] Task: Add React Query + API client with auth header
-  - **Description:** Implement typed API client, React Query providers, and automatic `Authorization: Bearer` injection.
-  - **Acceptance criteria:** Queries retry sensibly; 401 triggers re-login; errors are shown.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Implement OIDC Auth Code + PKCE login flow
-  - **Estimated tokens:** 2600
-
-- [ ] Task: Build Dashboard page (counts + intel timestamp)
-  - **Description:** Create dashboard widgets for total assets, open findings counts by severity, and "Intel last updated at".
-  - **Acceptance criteria:** Data loads from API endpoints; empty state handled; timestamp displayed clearly.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Query APIs → Implement dashboard endpoints (counts + intel status)
-  - **Estimated tokens:** 2600
-
-- [ ] Task: Build Asset Inventory page (table + details drawer)
-  - **Description:** Implement searchable table and asset details drawer via `/assets` and `/assets/{id}`.
-  - **Acceptance criteria:** Search works; selecting row opens drawer; pagination handled.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Query APIs → Implement GET /assets (search by canonical/hostname); Implement GET /assets/{id}
-  - **Estimated tokens:** 3000
-
-- [ ] Task: Build Findings List page (filters + NVD + intel fields)
-  - **Description:** Implement table with filters (asset, cve, source, severity, effective_status) and display NVD description, CVSS score, EPSS/KEV fields.
-  - **Acceptance criteria:** Filters map to query params; performance acceptable for demo dataset; NVD data displayed prominently.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Query APIs → Implement GET /findings with filters; Join threat intel fields into findings response
-  - **Estimated tokens:** 3200
-
-- ~~Task: (Stretch) Build Suppressions page~~ (MOVED TO POST-MVP)
-  - **Description:** ~~Add UI to propose CVE suppression and admin approve/reject/revoke; show state changes.~~
-  - **Note:** Suppressions are out of MVP scope.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** Suppressions milestone → Implement suppression listing endpoints (for UI); Async recompute worker
-  - **Estimated tokens:** 3000
-
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Deduplicate table/filter components and API hooks; ensure consistent loading/empty/error states.
-  - **Acceptance criteria:** `npm run build` passes; lint passes; no repeated query logic.
-  - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** All tasks in "React SPA (login + core pages)"
-  - **Estimated tokens:** 1700
+- [x] Task: Milestone refactor & duplication pass
+   - **Description:** Deduplicate filter parsing, pagination structs, and SQL fragments; ensure consistent response envelopes.
+   - **Acceptance criteria:** `go test ./...` passes; lint passes; no duplicated query-building logic.
+   - **Validation command:** `go test ./...`
+   - **Dependencies:** All tasks in “Query APIs (assets/findings/dashboard)”
+   - **Estimated tokens:** 1700
 
 ***
 

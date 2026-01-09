@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import AuthCallback from './auth/AuthCallback'
 import ProtectedRoute from './auth/ProtectedRoute'
 import Login from './auth/Login'
+import ErrorBoundary from './components/ErrorBoundary'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
 import Findings from './pages/Findings'
@@ -74,28 +75,30 @@ function AppContent() {
       </header>
 
       <main style={{ maxWidth: '80rem', margin: '0 auto', padding: '1.5rem 1rem' }}>
-        <Routes>
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/" element={
-            isAuthenticated ? (
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/" element={
+              isAuthenticated ? (
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              ) : (
+                <Login />
+              )
+            } />
+            <Route path="/assets" element={
               <ProtectedRoute>
-                <Dashboard />
+                <Assets />
               </ProtectedRoute>
-            ) : (
-              <Login />
-            )
-          } />
-          <Route path="/assets" element={
-            <ProtectedRoute>
-              <Assets />
-            </ProtectedRoute>
-          } />
-          <Route path="/findings" element={
-            <ProtectedRoute>
-              <Findings />
-            </ProtectedRoute>
-          } />
-        </Routes>
+            } />
+            <Route path="/findings" element={
+              <ProtectedRoute>
+                <Findings />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );

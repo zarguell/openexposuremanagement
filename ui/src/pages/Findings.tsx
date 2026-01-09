@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
+import LoadingSpinner from '../components/LoadingSpinner';
+import StatusBadge from '../components/StatusBadge';
+import Pagination from '../components/Pagination';
 
 function Findings() {
   const [filters, setFilters] = useState({
@@ -32,46 +35,10 @@ function Findings() {
     refetch();
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return '#dc2626';
-      case 'high': return '#ea580c';
-      case 'medium': return '#d97706';
-      case 'low': return '#65a30d';
-      case 'info': return '#0891b2';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open': return '#dc2626';
-      case 'fixed': return '#10b981';
-      default: return '#6b7280';
-    }
-  };
-
   if (isLoading) {
     return (
       <div style={{ padding: '1.5rem 1rem' }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ color: '#6b7280', marginTop: '1rem' }}>Loading findings...</p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+        <LoadingSpinner message="Loading findings..." />
       </div>
     );
   }
@@ -294,28 +261,16 @@ function Findings() {
                         </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: `${getSeverityColor(finding.definition_severity)}20`,
-                          color: getSeverityColor(finding.definition_severity)
-                        }}>
-                          {finding.definition_severity}
-                        </span>
+                        <StatusBadge
+                          status={finding.definition_severity}
+                          variant="severity"
+                        />
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: `${getStatusColor(finding.effective_status)}20`,
-                          color: getStatusColor(finding.effective_status)
-                        }}>
-                          {finding.effective_status}
-                        </span>
+                        <StatusBadge
+                          status={finding.effective_status}
+                          variant="status"
+                        />
                       </td>
                       <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                         {finding.cve_aliases?.join(', ') || 'None'}
@@ -331,47 +286,12 @@ function Findings() {
 
             {/* Pagination */}
             {data?.total > pageSize && (
-              <div style={{
-                padding: '1rem 1.5rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, data.total)} of {data.total} findings
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      backgroundColor: currentPage === 0 ? '#f9fafb' : 'white',
-                      color: currentPage === 0 ? '#9ca3af' : '#374151',
-                      cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={(currentPage + 1) * pageSize >= data.total}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      backgroundColor: (currentPage + 1) * pageSize >= data.total ? '#f9fafb' : 'white',
-                      color: (currentPage + 1) * pageSize >= data.total ? '#9ca3af' : '#374151',
-                      cursor: (currentPage + 1) * pageSize >= data.total ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalItems={data.total}
+                itemsPerPage={pageSize}
+                onPageChange={setCurrentPage}
+              />
             )}
           </>
         )}
