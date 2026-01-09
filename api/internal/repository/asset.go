@@ -9,27 +9,27 @@ import (
 
 // Asset represents an asset in the system
 type Asset struct {
-	ID            int64      `db:"id" json:"id"`
-	TenantID      int64      `db:"tenant_id" json:"tenant_id"`
-	CanonicalName string     `db:"canonical_name" json:"canonical_name"`
-	FirstSeenAt   time.Time  `db:"first_seen_at" json:"first_seen_at"`
-	LastSeenAt    time.Time  `db:"last_seen_at" json:"last_seen_at"`
-	OwnerTeamID   *int64     `db:"owner_team_id" json:"owner_team_id,omitempty"`
-	IsActive      bool       `db:"is_active" json:"is_active"`
-	CreatedAt     time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt     time.Time  `db:"updated_at" json:"updated_at"`
+	ID            int64     `db:"id" json:"id"`
+	TenantID      int64     `db:"tenant_id" json:"tenant_id"`
+	CanonicalName string    `db:"canonical_name" json:"canonical_name"`
+	FirstSeenAt   time.Time `db:"first_seen_at" json:"first_seen_at"`
+	LastSeenAt    time.Time `db:"last_seen_at" json:"last_seen_at"`
+	OwnerTeamID   *int64    `db:"owner_team_id" json:"owner_team_id,omitempty"`
+	IsActive      bool      `db:"is_active" json:"is_active"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
 }
 
 // AssetIdentifier represents an asset identifier
 type AssetIdentifier struct {
-	ID           int64      `db:"id" json:"id"`
-	TenantID     int64      `db:"tenant_id" json:"tenant_id"`
-	AssetID      int64      `db:"asset_id" json:"asset_id"`
-	IDType       string     `db:"id_type" json:"id_type"`
-	IDValue      string     `db:"id_value" json:"id_value"`
-	FirstSeenAt  time.Time  `db:"first_seen_at" json:"first_seen_at"`
-	LastSeenAt   time.Time  `db:"last_seen_at" json:"last_seen_at"`
-	Source       string     `db:"source" json:"source"`
+	ID          int64     `db:"id" json:"id"`
+	TenantID    int64     `db:"tenant_id" json:"tenant_id"`
+	AssetID     int64     `db:"asset_id" json:"asset_id"`
+	IDType      string    `db:"id_type" json:"id_type"`
+	IDValue     string    `db:"id_value" json:"id_value"`
+	FirstSeenAt time.Time `db:"first_seen_at" json:"first_seen_at"`
+	LastSeenAt  time.Time `db:"last_seen_at" json:"last_seen_at"`
+	Source      string    `db:"source" json:"source"`
 }
 
 // AssetRepository handles asset data access
@@ -181,4 +181,145 @@ func (r *AssetRepository) UpsertIdentifier(ctx context.Context, tenantID, assetI
 	}
 
 	return nil
+}
+
+// AssetListParams represents query parameters for listing assets
+type AssetListParams struct {
+	TenantID int64
+	Query    string // Optional search query for canonical name
+	Limit    int    // Max results to return (0 for no limit)
+	Offset   int    // Number of results to skip
+}
+
+// AssetListResult represents the result of listing assets
+type AssetListResult struct {
+	Assets []Asset
+	Total  int // Total count matching query (for pagination)
+	Limit  int
+	Offset int
+}
+
+// List retrieves assets with optional filtering and pagination
+func (r *AssetRepository) List(ctx context.Context, params AssetListParams) (*AssetListResult, error) {
+	// Build base query
+	baseQuery := "WHERE tenant_id = $1"
+	args := []interface{}{params.TenantID}
+	argCount := 1
+
+	// Add search filter if provided
+	if params.Query != "" {
+		argCount++
+		baseQuery += " AND canonical_name ILIKE $" + string(rune('0'+argCount))
+		args = append(args, "%"+params.Query+"%")
+	}
+
+	// Get total count
+	countQuery := "SELECT COUNT(*) FROM assets " + baseQuery
+	var total int
+	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build select query
+	selectQuery := "SELECT * FROM assets " + baseQuery + " ORDER BY canonical_name"
+	if params.Limit > 0 {
+		argCount++
+		selectQuery += " LIMIT $" + string(rune('0'+argCount))
+		args = append(args, params.Limit)
+	}
+	if params.Offset > 0 {
+		argCount++
+		selectQuery += " OFFSET $" + string(rune('0'+argCount))
+		args = append(args, params.Offset)
+	}
+
+	var assets []Asset
+	err = r.db.SelectContext(ctx, &assets, selectQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AssetListResult{
+		Assets: assets,
+		Total:  total,
+		Limit:  params.Limit,
+		Offset: params.Offset,
+	}, nil
+}
+
+// AssetDetail represents an asset with its identifiers and finding counts
+type AssetDetail struct {
+	Asset
+	Identifiers   []AssetIdentifier `json:"identifiers"`
+	OpenFindings  int               `json:"open_findings"`
+	FixedFindings int               `json:"fixed_findings"`
+	TotalFindings int               `json:"total_findings"`
+}
+
+// GetWithDetails retrieves an asset with its identifiers and finding counts
+func (r *AssetRepository) GetWithDetails(ctx context.Context, tenantID, assetID int64) (*AssetDetail, error) {
+	// Get the asset
+	asset, err := r.GetByID(ctx, assetID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify tenant ownership
+	if asset.TenantID != tenantID {
+		return nil, nil // Will be treated as 404
+	}
+
+	// Get identifiers
+	identifiers, err := r.GetIdentifiers(ctx, assetID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get finding counts
+	openCount, fixedCount, err := r.getFindingCounts(ctx, assetID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AssetDetail{
+		Asset:         *asset,
+		Identifiers:   identifiers,
+		OpenFindings:  openCount,
+		FixedFindings: fixedCount,
+		TotalFindings: openCount + fixedCount,
+	}, nil
+}
+
+// getFindingCounts gets the count of open and fixed findings for an asset
+func (r *AssetRepository) getFindingCounts(ctx context.Context, assetID int64) (open, fixed int, err error) {
+	query := `
+		SELECT effective_status,
+			COUNT(*) as count
+		FROM finding_instances
+		WHERE asset_id = $1
+		GROUP BY effective_status
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, assetID)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return 0, 0, err
+		}
+		switch status {
+		case "open":
+			open = count
+		case "fixed":
+			fixed = count
+		}
+	}
+
+	return open, fixed, rows.Err()
 }
