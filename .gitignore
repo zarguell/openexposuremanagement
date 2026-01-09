@@ -1,0 +1,50 @@
+# Binaries
+api/bin/
+api/cmd/server/server
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go
+go.sum
+vendor/
+
+# Node
+ui/node/
+ui/node_modules/
+ui/dist/
+ui/.env
+ui/.env.local
+ui/npm-debug.log*
+ui/yarn-debug.log*
+ui/yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database (local dev)
+*.db
+*.sqlite
+
+# Docker volumes
+docker-volumes/

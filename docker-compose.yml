@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oem-postgres
+    environment:
+      POSTGRES_USER: oem
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: oem
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oem-network
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: oem-api
+    environment:
+      DATABASE_URL: postgres://oem:password@postgres:5432/oem?sslmode=disable
+      API_PORT: 8080
+      DEMO_MODE: "true"
+      DEMO_API_KEY: demo-key-for-development-only
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - oem-network
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: oem-ui
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - oem-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  oem-network:
+    driver: bridge
