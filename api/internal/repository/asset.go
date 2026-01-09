@@ -101,3 +101,84 @@ func (r *AssetRepository) GetIdentifiers(ctx context.Context, assetID int64) ([]
 	}
 	return identifiers, nil
 }
+
+// UpdateCanonicalName updates the canonical name for an asset
+func (r *AssetRepository) UpdateCanonicalName(ctx context.Context, id int64, canonicalName string) error {
+	query := `UPDATE assets SET canonical_name = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, canonicalName, id)
+	return err
+}
+
+// UpdateIdentifierLastSeen updates the last_seen_at timestamp for an identifier
+func (r *AssetRepository) UpdateIdentifierLastSeen(ctx context.Context, tenantID, assetID int64, idType, idValue string, lastSeen time.Time) error {
+	query := `UPDATE asset_identifiers SET last_seen_at = $1 WHERE tenant_id = $2 AND asset_id = $3 AND id_type = $4 AND id_value = $5`
+	_, err := r.db.ExecContext(ctx, query, lastSeen, tenantID, assetID, idType, idValue)
+	return err
+}
+
+// FindByIdentifier finds an asset by identifier type and value
+func (r *AssetRepository) FindByIdentifier(ctx context.Context, tenantID int64, idType, idValue string) (*Asset, error) {
+	var asset Asset
+	query := `SELECT a.* FROM assets a
+		INNER JOIN asset_identifiers ai ON a.id = ai.asset_id
+		WHERE ai.tenant_id = $1 AND ai.id_type = $2 AND ai.id_value = $3`
+	err := r.db.GetContext(ctx, &asset, query, tenantID, idType, idValue)
+	if err != nil {
+		return nil, err
+	}
+	return &asset, nil
+}
+
+// FindByIPAndHostname finds an asset that has both the given IP and hostname identifiers
+func (r *AssetRepository) FindByIPAndHostname(ctx context.Context, tenantID int64, ip, hostname string) (*Asset, error) {
+	var asset Asset
+	query := `SELECT DISTINCT a.* FROM assets a
+		INNER JOIN asset_identifiers ai1 ON a.id = ai1.asset_id
+		INNER JOIN asset_identifiers ai2 ON a.id = ai2.asset_id
+		WHERE a.tenant_id = $1
+		AND ai1.id_type = 'ipv4' AND ai1.id_value = $2
+		AND ai2.id_type = 'hostname_norm' AND ai2.id_value = $3`
+	err := r.db.GetContext(ctx, &asset, query, tenantID, ip, hostname)
+	if err != nil {
+		return nil, err
+	}
+	return &asset, nil
+}
+
+// GetExistingIdentifier gets an existing identifier for an asset
+func (r *AssetRepository) GetExistingIdentifier(ctx context.Context, tenantID, assetID int64, idType, idValue string) (*AssetIdentifier, error) {
+	var identifier AssetIdentifier
+	query := `SELECT * FROM asset_identifiers
+		WHERE tenant_id = $1 AND asset_id = $2 AND id_type = $3 AND id_value = $4`
+	err := r.db.GetContext(ctx, &identifier, query, tenantID, assetID, idType, idValue)
+	if err != nil {
+		return nil, err
+	}
+	return &identifier, nil
+}
+
+// UpsertIdentifier creates or updates an identifier for an asset
+func (r *AssetRepository) UpsertIdentifier(ctx context.Context, tenantID, assetID int64, idType, idValue, source string, firstSeen, lastSeen time.Time) error {
+	// First try to find existing identifier
+	existing, err := r.GetExistingIdentifier(ctx, tenantID, assetID, idType, idValue)
+	if err != nil {
+		// Identifier doesn't exist, create it
+		identifier := &AssetIdentifier{
+			TenantID:    tenantID,
+			AssetID:     assetID,
+			IDType:      idType,
+			IDValue:     idValue,
+			FirstSeenAt: firstSeen,
+			LastSeenAt:  lastSeen,
+			Source:      source,
+		}
+		return r.AddIdentifier(ctx, identifier)
+	}
+
+	// Identifier exists, update last_seen_at if it's newer
+	if lastSeen.After(existing.LastSeenAt) {
+		return r.UpdateIdentifierLastSeen(ctx, tenantID, assetID, idType, idValue, lastSeen)
+	}
+
+	return nil
+}
