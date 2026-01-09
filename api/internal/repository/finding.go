@@ -82,12 +82,15 @@ func (r *FindingInstanceRepository) UpsertFindingInstance(ctx context.Context, i
 	`
 
 	var evidenceJSON []byte
-	if instance.EvidenceJSON != nil {
+	if instance.EvidenceJSON != nil && len(instance.EvidenceJSON) > 0 {
 		var err error
 		evidenceJSON, err = json.Marshal(instance.EvidenceJSON)
 		if err != nil {
 			return err
 		}
+	} else {
+		// Use empty JSON object for nil/empty evidence
+		evidenceJSON = []byte("{}")
 	}
 
 	err := r.db.QueryRowContext(ctx, query,
