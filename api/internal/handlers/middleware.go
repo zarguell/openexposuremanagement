@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"os"
 
 	"github.com/openexposuremanagement/oem/internal/auth"
 	"github.com/rs/zerolog/log"
@@ -10,6 +12,22 @@ import (
 // RequireAuth wraps a handler requiring authenticated user context
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if demo mode is enabled (for MVP demonstration)
+		if os.Getenv("DEMO_MODE") == "true" {
+			log.Warn().Msg("🔓 DEMO MODE: Authentication bypassed for demonstration purposes")
+			// Create a mock user context for demo mode
+			mockCtx := &auth.UserContext{
+				UserID:   "demo-user",
+				TenantID: 1, // Default tenant
+				Email:    "demo@example.com",
+				Roles:    []string{"admin", "analyst", "viewer"},
+			}
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, mockCtx)
+			r = r.WithContext(ctx)
+			next(w, r)
+			return
+		}
+
 		_, err := auth.GetUserContext(r)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get user context")
@@ -25,6 +43,13 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 func RequireRole(roles ...string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// Check if demo mode is enabled
+			if os.Getenv("DEMO_MODE") == "true" {
+				log.Warn().Msg("🔓 DEMO MODE: Role check bypassed for demonstration purposes")
+				next(w, r)
+				return
+			}
+
 			userCtx, err := auth.GetUserContext(r)
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to get user context")

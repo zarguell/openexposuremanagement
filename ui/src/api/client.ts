@@ -12,17 +12,21 @@ const userManager = new UserManager({
   scope: 'openid profile email',
 });
 
+// Check if we're in demo mode
+const isDemoMode = !((import.meta as any).env?.VITE_OIDC_ISSUER && (import.meta as any).env?.VITE_OIDC_CLIENT_ID);
+
 // Custom fetch function that includes auth headers
 async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const user = await userManager.getUser();
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  if (user?.access_token) {
-    headers['Authorization'] = `Bearer ${user.access_token}`;
+  if (!isDemoMode) {
+    const user = await userManager.getUser();
+    if (user?.access_token) {
+      headers['Authorization'] = `Bearer ${user.access_token}`;
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -30,12 +34,17 @@ async function authenticatedFetch(url: string, options: RequestInit = {}): Promi
     headers,
   });
 
-  // Handle 401/403 errors by triggering re-authentication
+  // Handle 401/403 errors by triggering re-authentication (only in OIDC mode)
   if (response.status === 401 || response.status === 403) {
-    // Clear user session and redirect to login
-    await userManager.removeUser();
-    userManager.signinRedirect();
-    throw new Error('Authentication required');
+    if (isDemoMode) {
+      // In demo mode, ignore auth errors and continue
+      console.warn('🔓 Demo mode: Ignoring authentication error for demo purposes');
+    } else {
+      // Clear user session and redirect to login
+      await userManager.removeUser();
+      userManager.signinRedirect();
+      throw new Error('Authentication required');
+    }
   }
 
   return response;

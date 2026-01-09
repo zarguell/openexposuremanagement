@@ -13,6 +13,28 @@ Demonstrate a working platform that can:
 
 ## Quick Start (Demo)
 
+### 🚀 Fast Demo Mode (No Authentication)
+
+For quick demonstrations, you can run the application without authentication:
+
+```bash
+# Start both frontend and backend in demo mode
+./demo.sh
+
+# Or manually:
+# Terminal 1 - Backend (with demo mode)
+cd api && DEMO_MODE=true go run ./cmd/server
+
+# Terminal 2 - Frontend
+cd ui && npm run dev
+```
+
+**⚠️ Security Warning**: Demo mode disables authentication entirely. This is NOT secure for production use!
+
+### 🔐 Full Production Setup
+
+For production use with proper authentication:
+
 ```bash
 # Build and start all services
 docker compose up --build
@@ -26,6 +48,10 @@ make seed
 # Run smoke tests
 make demo-smoke
 ```
+
+Configure OIDC authentication by setting these environment variables:
+- `VITE_OIDC_ISSUER` - Your OIDC provider issuer URL
+- `VITE_OIDC_CLIENT_ID` - Your OIDC client ID
 
 ## Development
 

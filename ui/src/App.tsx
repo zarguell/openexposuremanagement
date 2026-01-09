@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, isDemoMode } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -34,6 +34,22 @@ function AppContent() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {isDemoMode && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          borderBottom: '1px solid #f59e0b',
+          padding: '0.5rem 1rem',
+          textAlign: 'center'
+        }}>
+          <span style={{
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#92400e'
+          }}>
+            🔓 Demo Mode: Authentication disabled for demonstration purposes. Not secure for production use.
+          </span>
+        </div>
+      )}
       <header style={{ backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', height: '4rem', alignItems: 'center' }}>
@@ -46,11 +62,24 @@ function AppContent() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   Welcome, {user?.profile?.name || user?.profile?.email || 'User'}
+                  {isDemoMode && (
+                    <span style={{
+                      marginLeft: '0.5rem',
+                      padding: '0.125rem 0.5rem',
+                      backgroundColor: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: '500'
+                    }}>
+                      DEMO
+                    </span>
+                  )}
                 </span>
                 <button
                   onClick={handleLogout}
                   style={{
-                    backgroundColor: '#ef4444',
+                    backgroundColor: isDemoMode ? '#6b7280' : '#ef4444',
                     color: 'white',
                     padding: '0.5rem 1rem',
                     borderRadius: '0.375rem',
@@ -60,13 +89,13 @@ function AppContent() {
                     transition: 'background-color 0.2s'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
+                    e.currentTarget.style.backgroundColor = isDemoMode ? '#4b5563' : '#dc2626';
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ef4444';
+                    e.currentTarget.style.backgroundColor = isDemoMode ? '#6b7280' : '#ef4444';
                   }}
                 >
-                  Sign Out
+                  {isDemoMode ? 'Exit Demo' : 'Sign Out'}
                 </button>
               </div>
             )}
