@@ -1,28 +1,28 @@
 ## Milestone: Repo & dev baseline
 One-time setup to make the single-machine demo reproducible with a tight feedback loop; reset context after this milestone.
 
-- [ ] Task: Create repo skeleton & conventions
+- [x] Task: Create repo skeleton & conventions
   - **Description:** Initialize folder structure (`api/`, `ui/`, `db/`, `docs/`) and establish naming, linting, and commit conventions.
   - **Acceptance criteria:** Repo has consistent layout; `make help` (or equivalent) lists common commands; basic README exists.
   - **Validation command:** `make help`
   - **Dependencies:** None
   - **Estimated tokens:** 2200
 
-- [ ] Task: Add docker-compose baseline (api, postgres, ui)
+- [x] Task: Add docker-compose baseline (api, postgres, ui)
   - **Description:** Create `docker-compose.yml` for local single-host demo with network wiring, env vars, and volumes.
   - **Acceptance criteria:** `docker compose up` brings up Postgres, API, and UI containers; UI can reach API via configured base URL.
   - **Validation command:** `docker compose up --build`
   - **Dependencies:** Create repo skeleton & conventions
   - **Estimated tokens:** 2600
 
-- [ ] Task: Add Makefile/dev scripts
+- [x] Task: Add Makefile/dev scripts
   - **Description:** Add `make` targets for `dev`, `db`, `migrate`, `test`, `lint`, `seed`.
   - **Acceptance criteria:** Targets run without manual steps; commands are documented in `README.md`.
   - **Validation command:** `make test`
   - **Dependencies:** Add docker-compose baseline (api, postgres, ui)
   - **Estimated tokens:** 1800
 
-- [ ] Task: Milestone refactor & duplication pass
+- [x] Task: Milestone refactor & duplication pass
   - **Description:** Review scaffolding for duplicated config, hard-coded ports, and inconsistent env naming.
   - **Acceptance criteria:** Minimal duplication; `docker compose up --build` still works; lint passes for any added scripts.
   - **Validation command:** `docker compose up --build`
@@ -34,60 +34,60 @@ One-time setup to make the single-machine demo reproducible with a tight feedbac
 ## Milestone: Database schema & migrations
 Define Postgres schema, indexes, and materialized views to support Postgres-only “search & dashboards”; reset context after this milestone.
 
-- [ ] Task: Add migrations framework (golang-migrate)
+- [x] Task: Add migrations framework (golang-migrate)
   - **Description:** Wire `golang-migrate` into the repo and compose environment; add migration runner command.
   - **Acceptance criteria:** Can apply/rollback migrations against local Postgres; migration history table present.
   - **Validation command:** `make migrate-up && make migrate-down`
   - **Dependencies:** Repo & dev baseline → Add docker-compose baseline (api, postgres, ui)
   - **Estimated tokens:** 2400
 
-- [ ] Task: Create core tenancy/RBAC tables
+- [x] Task: Create core tenancy/RBAC tables
   - **Description:** Implement tables: `tenants`, `users`, `roles`, `user_roles`, `api_keys` with constraints and indexes.
   - **Acceptance criteria:** Foreign keys enforced; unique constraints on tenant/name where appropriate; `revoked_at` supported for keys.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\dt"`
   - **Dependencies:** Add migrations framework (golang-migrate)
   - **Estimated tokens:** 2600
 
-- [ ] Task: Create asset tables & identifier indexes
+- [x] Task: Create asset tables & identifier indexes
   - **Description:** Implement `assets`, `asset_identifiers` plus indexes for lookup by `(tenant_id, id_type, id_value)` and recency.
   - **Acceptance criteria:** Identifiers support multiple sources and time windows; indexes exist to support matching algorithm.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d assets" && psql "$DATABASE_URL" -c "\d asset_identifiers"`
   - **Dependencies:** Create core tenancy/RBAC tables
   - **Estimated tokens:** 2800
 
-- [ ] Task: Create findings tables & indexes
+- [x] Task: Create findings tables & indexes
   - **Description:** Implement `finding_definitions`, `finding_definition_aliases`, `finding_instances` with indexes for tenant filters (`effective_status`, `definition_uid`, `last_observed_at`).
   - **Acceptance criteria:** Upsert-friendly keys; aliases allow multiple CVEs per definition; instances reference assets and definitions.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d finding_instances"`
   - **Dependencies:** Create asset tables & identifier indexes
   - **Estimated tokens:** 2900
 
-- [ ] Task: Create suppression workflow tables
+- [x] Task: Create suppression workflow tables
   - **Description:** Implement `suppressions`, `suppression_reviews`, `tenant_policy_state` with constraints for state transitions and revision tracking.
   - **Acceptance criteria:** `tenant_policy_state.policy_revision` exists and is incrementable; suppression audit trail stored.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d suppressions"`
   - **Dependencies:** Create findings tables & indexes
   - **Estimated tokens:** 2800
 
-- [ ] Task: Create threat intel cache tables
+- [x] Task: Create threat intel cache tables
   - **Description:** Implement `intel_cve` and `intel_sync_runs` tables for EPSS/KEV caching and “last updated” display.
   - **Acceptance criteria:** `intel_cve.cve` is primary key; `intel_sync_runs` records status and errors.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d intel_cve"`
   - **Dependencies:** Create findings tables & indexes
   - **Estimated tokens:** 2400
 
-- [ ] Task: Add dashboard materialized views + concurrent refresh readiness
+- [x] Task: Add dashboard materialized views + concurrent refresh readiness
   - **Description:** Define MVP materialized views (counts by effective status, open findings, assets active) and create required unique indexes to allow `REFRESH MATERIALIZED VIEW CONCURRENTLY` where used.[1]
   - **Acceptance criteria:** Views populate; refresh commands succeed; if `CONCURRENTLY` used, a qualifying unique index exists.[1]
   - **Validation command:** `psql "$DATABASE_URL" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_dashboard_counts;"`
   - **Dependencies:** Create asset tables & identifier indexes; Create findings tables & indexes
   - **Estimated tokens:** 3000
 
-- [ ] Task: Milestone refactor & duplication pass
+- [x] Task: Milestone refactor & duplication pass
   - **Description:** Normalize naming, constraints, and index patterns across migrations; remove redundant indexes.
   - **Acceptance criteria:** `make migrate-up` succeeds from empty DB; schema is consistent; no unused/duplicate indexes.
   - **Validation command:** `make migrate-up`
-  - **Dependencies:** All tasks in “Database schema & migrations”
+  - **Dependencies:** All tasks in "Database schema & migrations"
   - **Estimated tokens:** 1800
 
 ***
@@ -95,42 +95,42 @@ Define Postgres schema, indexes, and materialized views to support Postgres-only
 ## Milestone: Go API foundation (authN/authZ + config)
 Implement API service skeleton, OIDC JWT validation, and RBAC gates for endpoints; reset context after this milestone.
 
-- [ ] Task: Initialize Go API module & health endpoints
+- [x] Task: Initialize Go API module & health endpoints
   - **Description:** Create Go module, router, structured logging, config loader, and `/healthz` endpoint.
   - **Acceptance criteria:** API starts locally; `/healthz` returns 200; config via env works.
   - **Validation command:** `go test ./... && curl -sf http://localhost:8080/healthz`
   - **Dependencies:** Repo & dev baseline → Add docker-compose baseline (api, postgres, ui)
   - **Estimated tokens:** 2500
 
-- [ ] Task: Implement DB layer (sqlc or minimal repository)
+- [x] Task: Implement DB layer (sqlc or minimal repository)
   - **Description:** Add Postgres connection pooling, migrations hook, and typed queries for core entities.
   - **Acceptance criteria:** API connects to DB; query functions covered by unit tests (mock or test DB).
   - **Validation command:** `go test ./...`
   - **Dependencies:** Database schema & migrations → Add migrations framework (golang-migrate)
   - **Estimated tokens:** 3000
 
-- [ ] Task: Implement OIDC JWT verification for SPA bearer tokens
+- [x] Task: Implement OIDC JWT verification for SPA bearer tokens
   - **Description:** Validate `Authorization: Bearer` tokens using issuer JWKS, map claims to user identity, and enforce tenant context.
   - **Acceptance criteria:** Requests without token are rejected; valid token yields user context; supports SPA Auth Code + PKCE usage pattern.[2]
   - **Validation command:** `go test ./...`
   - **Dependencies:** Initialize Go API module & health endpoints
   - **Estimated tokens:** 3000
 
-- [ ] Task: Implement RBAC middleware (admin/analyst/viewer)
+- [x] Task: Implement RBAC middleware (admin/analyst/viewer)
   - **Description:** Enforce role checks per endpoint; add `GET /me` returning user, tenant, roles.
   - **Acceptance criteria:** Role-protected endpoints return 403 without required role; `/me` returns expected shape.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement OIDC JWT verification for SPA bearer tokens
   - **Estimated tokens:** 2600
 
-- [ ] Task: Implement API key auth for ingestion (scopes + bound source)
+- [x] Task: Implement API key auth for ingestion (scopes + bound source)
   - **Description:** Add API key parsing, hashing/verification, scope check (`ingest:vm`), and optional `bound_source` enforcement.
   - **Acceptance criteria:** Ingestion rejects missing/invalid/revoked keys; rejects payload where `source` mismatches bound source.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement DB layer (sqlc or minimal repository); Create core tenancy/RBAC tables
   - **Estimated tokens:** 3000
 
-- [ ] Task: Milestone refactor & duplication pass
+- [x] Task: Milestone refactor & duplication pass
   - **Description:** Consolidate auth context plumbing, error formats, and config parsing; reduce boilerplate handlers.
   - **Acceptance criteria:** Lint/test passes; no duplicate auth parsing logic across middlewares.
   - **Validation command:** `go test ./...`
