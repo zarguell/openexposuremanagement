@@ -118,10 +118,19 @@ echo "🌱 Seeding sample data..."
 if [ -f "scripts/seed-data.go" ]; then
     # Wait a bit more for API to be fully ready
     sleep 5
-    go run scripts/seed-data.go -api-url="http://localhost:8080" -data-dir="sample-data" -demo -verbose
+    go run scripts/seed-data.go -api-url="http://localhost:8080" -data-dir="sample-data" -demo
     print_status "Sample data seeded"
 else
     print_warning "Seed script not found, skipping data seeding"
+fi
+
+# Refresh materialized views
+echo ""
+echo "🔄 Refreshing dashboard materialized views..."
+if curl -s -f -X POST "http://localhost:8080/api/v1/dashboard/refresh" > /dev/null 2>&1; then
+    print_status "Materialized views refreshed"
+else
+    print_warning "Failed to refresh materialized views - dashboard may show stale data"
 fi
 
 # Test key API endpoints

@@ -28,10 +28,11 @@ func main() {
 	flag.StringVar(&config.APIURL, "api-url", defaultAPIURL, "API base URL")
 	flag.StringVar(&config.DataDir, "data-dir", "sample-data", "Directory containing sample data files")
 	flag.BoolVar(&config.DemoMode, "demo", false, "Run in demo mode (no authentication)")
-	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose logging")
+	flag.BoolVar(&config.Verbose, "verbose", true, "Enable verbose logging")
 	flag.Parse()
 
-	if config.Verbose {
+	// Always enable verbose logging for demo mode
+	if config.DemoMode || config.Verbose {
 		log.SetFlags(log.LstdFlags | log.Lshortfile)
 	}
 

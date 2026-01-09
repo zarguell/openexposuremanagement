@@ -80,11 +80,14 @@ func main() {
 
 	// Initialize demo mode if enabled
 	if os.Getenv("DEMO_MODE") == "true" {
-		log.Warn().Msg("🔓 DEMO MODE: Initializing demo tenant and roles")
+		log.Warn().Msg("🔓 DEMO MODE ENABLED: Authentication bypassed for demonstration purposes")
+		log.Warn().Msg("🔓 DEMO MODE: This is NOT secure for production use!")
+		log.Info().Msg("🔓 DEMO MODE: Initializing demo tenant and roles")
 		if err := initializeDemoData(db); err != nil {
 			log.Error().Err(err).Msg("Failed to initialize demo data")
 			os.Exit(1)
 		}
+		log.Info().Msg("🔓 DEMO MODE: Demo tenant and roles initialized successfully")
 	}
 
 	// Create server

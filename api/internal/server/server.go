@@ -54,6 +54,7 @@ func (s *Server) registerRoutes() {
 
 	// Dashboard endpoints
 	apiV1.HandleFunc("/dashboard", handlers.RequireAuth(handlers.GetDashboard(s.db)))
+	apiV1.HandleFunc("/dashboard/refresh", handlers.RequireAuth(handlers.RefreshDashboardViews(s.db)))
 
 	// Intel endpoints
 	apiV1.HandleFunc("/intel/status", handlers.RequireAuth(handlers.GetIntelStatus(s.db)))
