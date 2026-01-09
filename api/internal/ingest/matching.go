@@ -23,10 +23,10 @@ const (
 
 // AssetMatchResult contains the result of asset matching
 type AssetMatchResult struct {
-	Asset    *repository.Asset
-	Reason   MatchReason
+	Asset     *repository.Asset
+	Reason    MatchReason
 	MatchedID string // The identifier value that was matched
-	NewAsset bool   // True if a new asset was created
+	NewAsset  bool   // True if a new asset was created
 }
 
 // AssetMatcher performs deterministic asset matching

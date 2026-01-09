@@ -14,13 +14,13 @@ import (
 // Test data helpers
 func getValidVMFindingsPayload() []byte {
 	payload := map[string]interface{}{
-		"source": "tenable",
-		"scanner": " Nessus",
+		"source":     "tenable",
+		"scanner":    " Nessus",
 		"scanned_at": time.Now().UTC().Format(time.RFC3339),
 		"findings": []map[string]interface{}{
 			{
 				"asset": map[string]interface{}{
-					"hostname": "webserver01.example.com",
+					"hostname":     "webserver01.example.com",
 					"ip_addresses": []string{"192.168.1.100"},
 					"external_ids": map[string]interface{}{
 						"aws:instance_id": "i-1234567890abcdef0",
@@ -28,16 +28,16 @@ func getValidVMFindingsPayload() []byte {
 				},
 				"finding": map[string]interface{}{
 					"definition_id": "12345",
-					"title": "Apache Log4j Remote Code Execution",
-					"severity": "Critical",
-					"cves": []string{"CVE-2021-44228"},
-					"references": []string{"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228"},
+					"title":         "Apache Log4j Remote Code Execution",
+					"severity":      "Critical",
+					"cves":          []string{"CVE-2021-44228"},
+					"references":    []string{"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228"},
 				},
-				"status": "open",
+				"status":      "open",
 				"first_found": time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339),
-				"last_found": time.Now().UTC().Format(time.RFC3339),
+				"last_found":  time.Now().UTC().Format(time.RFC3339),
 				"evidence": map[string]interface{}{
-					"port": 443,
+					"port":     443,
 					"protocol": "https",
 				},
 			},
@@ -59,9 +59,9 @@ func TestIngestVMFindings_Validation(t *testing.T) {
 					},
 					"finding": map[string]interface{}{
 						"definition_id": "12345",
-						"title": "Test",
+						"title":         "Test",
 					},
-					"status": "open",
+					"status":     "open",
 					"last_found": time.Now().UTC().Format(time.RFC3339),
 				},
 			},
@@ -84,8 +84,8 @@ func TestIngestVMFindings_Validation(t *testing.T) {
 
 	t.Run("rejects_empty_findings_array", func(t *testing.T) {
 		payload := map[string]interface{}{
-			"source": "tenable",
-			"findings": []interface{}{},
+			"source":     "tenable",
+			"findings":   []interface{}{},
 			"scanned_at": time.Now().UTC().Format(time.RFC3339),
 		}
 
@@ -111,16 +111,16 @@ func TestIngestVMFindings_Validation(t *testing.T) {
 
 	t.Run("rejects_missing_asset_identifiers", func(t *testing.T) {
 		payload := map[string]interface{}{
-			"source": "tenable",
+			"source":     "tenable",
 			"scanned_at": time.Now().UTC().Format(time.RFC3339),
 			"findings": []map[string]interface{}{
 				{
 					"asset": map[string]interface{}{},
 					"finding": map[string]interface{}{
 						"definition_id": "12345",
-						"title": "Test",
+						"title":         "Test",
 					},
-					"status": "open",
+					"status":     "open",
 					"last_found": time.Now().UTC().Format(time.RFC3339),
 				},
 			},
@@ -214,13 +214,13 @@ func TestIngestVMFindings_Response(t *testing.T) {
 	t.Run("returns_success_response", func(t *testing.T) {
 		// This documents expected success response format
 		expectedResponse := map[string]interface{}{
-			"status": "success",
+			"status":  "success",
 			"message": "Findings ingested successfully",
 			"summary": map[string]interface{}{
-				"total_findings": 1,
-				"assets_processed": 1,
+				"total_findings":      1,
+				"assets_processed":    1,
 				"definitions_created": 1,
-				"findings_upserted": 1,
+				"findings_upserted":   1,
 			},
 		}
 

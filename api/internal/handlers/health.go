@@ -9,10 +9,10 @@ import (
 func GetMe(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement actual user context from JWT
 	response := map[string]interface{}{
-		"user":     nil,
-		"tenant":   nil,
-		"roles":    []string{},
-		"message":  "User authentication not yet implemented",
+		"user":    nil,
+		"tenant":  nil,
+		"roles":   []string{},
+		"message": "User authentication not yet implemented",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

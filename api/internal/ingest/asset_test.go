@@ -95,7 +95,7 @@ func TestUpsertAsset(t *testing.T) {
 		}
 
 		// Verify first_seen_at was NOT updated
-		if result.Asset.FirstSeenAt.After(existingAsset.FirstSeenAt.Add(1*time.Minute)) {
+		if result.Asset.FirstSeenAt.After(existingAsset.FirstSeenAt.Add(1 * time.Minute)) {
 			t.Errorf("expected first_seen_at to remain unchanged, got %v (old: %v)", result.Asset.FirstSeenAt, existingAsset.FirstSeenAt)
 		}
 	})
@@ -169,7 +169,7 @@ func TestUpsertAsset(t *testing.T) {
 	t.Run("updates identifier last_seen_at for existing identifiers", func(t *testing.T) {
 		// Setup: existing asset with old identifier
 		cleanTestDB(t, db)
-		oldTime := time.Now().Add(-24*time.Hour)
+		oldTime := time.Now().Add(-24 * time.Hour)
 		existingAsset := createTestAsset(t, db, tenantID, "webserver01.example.com", oldTime)
 		createTestIdentifier(t, db, tenantID, existingAsset.ID, "hostname_norm", "webserver01.example.com", source, oldTime)
 
@@ -205,7 +205,7 @@ func TestUpsertAsset(t *testing.T) {
 			t.Errorf("expected identifier last_seen_at to be updated to scanned time, got %v", hostnameID.LastSeenAt)
 		}
 
-		if hostnameID.FirstSeenAt.After(oldTime.Add(1*time.Minute)) {
+		if hostnameID.FirstSeenAt.After(oldTime.Add(1 * time.Minute)) {
 			t.Errorf("expected identifier first_seen_at to remain unchanged, got %v", hostnameID.FirstSeenAt)
 		}
 	})

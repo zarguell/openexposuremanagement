@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -26,4 +27,33 @@ func Connect(databaseURL string) (*sqlx.DB, error) {
 	}
 
 	return db, nil
+}
+
+// InTransaction executes a function within a database transaction.
+// If the function returns an error, the transaction is rolled back.
+// Otherwise, the transaction is committed.
+func InTransaction(ctx context.Context, db *sqlx.DB, fn func(*sqlx.Tx) error) error {
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	// Ensure rollback happens if commit fails
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Mark tx as nil to prevent rollback in defer
+	tx = nil
+	return nil
 }

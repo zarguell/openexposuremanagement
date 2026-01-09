@@ -140,19 +140,8 @@ func updateExistingAsset(ctx context.Context, repo *repository.AssetRepository, 
 func upsertIdentifiers(ctx context.Context, repo *repository.AssetRepository, tenantID, assetID int64, vmAsset *VMAsset, source string, scannedAt time.Time) error {
 	// 1. Hostname identifier
 	if vmAsset.Hostname != "" {
-		normalizedHostname := NormalizeHostname(vmAsset.Hostname)
-		err := repo.UpsertIdentifier(ctx, tenantID, assetID, "hostname_norm", normalizedHostname, source, scannedAt, scannedAt)
-		if err != nil {
+		if err := upsertHostnameIdentifiers(ctx, repo, tenantID, assetID, vmAsset.Hostname, source, scannedAt); err != nil {
 			return err
-		}
-
-		// Shortname identifier
-		shortname := NormalizeShortname(vmAsset.Hostname)
-		if shortname != "" && shortname != normalizedHostname {
-			err = repo.UpsertIdentifier(ctx, tenantID, assetID, "shortname_norm", shortname, source, scannedAt, scannedAt)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -162,9 +151,7 @@ func upsertIdentifiers(ctx context.Context, repo *repository.AssetRepository, te
 		if normalizedIP == "" {
 			continue
 		}
-
-		err := repo.UpsertIdentifier(ctx, tenantID, assetID, "ipv4", normalizedIP, source, scannedAt, scannedAt)
-		if err != nil {
+		if err := repo.UpsertIdentifier(ctx, tenantID, assetID, "ipv4", normalizedIP, source, scannedAt, scannedAt); err != nil {
 			return err
 		}
 	}
@@ -175,11 +162,27 @@ func upsertIdentifiers(ctx context.Context, repo *repository.AssetRepository, te
 		if normalizedID == "" {
 			continue
 		}
-
 		// Namespace the external ID type
 		namespacedType := "external_id:" + idType
-		err := repo.UpsertIdentifier(ctx, tenantID, assetID, namespacedType, normalizedID, source, scannedAt, scannedAt)
-		if err != nil {
+		if err := repo.UpsertIdentifier(ctx, tenantID, assetID, namespacedType, normalizedID, source, scannedAt, scannedAt); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// upsertHostnameIdentifiers upserts hostname and shortname identifiers
+func upsertHostnameIdentifiers(ctx context.Context, repo *repository.AssetRepository, tenantID, assetID int64, hostname, source string, scannedAt time.Time) error {
+	normalizedHostname := NormalizeHostname(hostname)
+	if err := repo.UpsertIdentifier(ctx, tenantID, assetID, "hostname_norm", normalizedHostname, source, scannedAt, scannedAt); err != nil {
+		return err
+	}
+
+	// Shortname identifier (only if different from hostname)
+	shortname := NormalizeShortname(hostname)
+	if shortname != "" && shortname != normalizedHostname {
+		if err := repo.UpsertIdentifier(ctx, tenantID, assetID, "shortname_norm", shortname, source, scannedAt, scannedAt); err != nil {
 			return err
 		}
 	}

@@ -252,12 +252,12 @@ func TestUpsertFindingInstance(t *testing.T) {
 // Table-driven tests for edge cases
 func TestFindingInstance_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name        string
-		vmFinding   *VMFinding
-		tenantID    int64
-		assetID     int64
+		name          string
+		vmFinding     *VMFinding
+		tenantID      int64
+		assetID       int64
 		definitionUID string
-		expectError bool
+		expectError   bool
 	}{
 		{
 			name: "valid finding with all fields",

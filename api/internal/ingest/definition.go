@@ -82,8 +82,7 @@ func UpsertDefinitionWithAliases(ctx context.Context, db *sqlx.DB, source string
 
 	// Upsert definition
 	repo := repository.NewDefinitionRepository(db)
-	err := repo.UpsertDefinition(ctx, def)
-	if err != nil {
+	if err := repo.UpsertDefinition(ctx, def); err != nil {
 		log.Error().
 			Str("definition_uid", def.DefinitionUID).
 			Err(err).
@@ -96,13 +95,25 @@ func UpsertDefinitionWithAliases(ctx context.Context, db *sqlx.DB, source string
 		Str("title", def.Title).
 		Msg("Upserted definition")
 
-	// Extract and upsert CVE aliases
-	aliases := ExtractCVEAliases(def.DefinitionUID, vmFinding)
+	// Upsert CVE aliases
+	if err := upsertCVEAliases(ctx, repo, def.DefinitionUID, vmFinding); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// upsertCVEAliases upserts all CVE aliases for a finding definition
+func upsertCVEAliases(ctx context.Context, repo *repository.DefinitionRepository, definitionUID string, vmFinding *VMFinding) error {
+	aliases := ExtractCVEAliases(definitionUID, vmFinding)
+	if len(aliases) == 0 {
+		return nil
+	}
+
 	for _, alias := range aliases {
-		err := repo.UpsertAlias(ctx, &alias)
-		if err != nil {
+		if err := repo.UpsertAlias(ctx, &alias); err != nil {
 			log.Error().
-				Str("definition_uid", def.DefinitionUID).
+				Str("definition_uid", definitionUID).
 				Str("alias_type", alias.AliasType).
 				Str("alias_value", alias.AliasValue).
 				Err(err).
@@ -111,12 +122,10 @@ func UpsertDefinitionWithAliases(ctx context.Context, db *sqlx.DB, source string
 		}
 	}
 
-	if len(aliases) > 0 {
-		log.Debug().
-			Str("definition_uid", def.DefinitionUID).
-			Int("count", len(aliases)).
-			Msg("Upserted CVE aliases")
-	}
+	log.Debug().
+		Str("definition_uid", definitionUID).
+		Int("count", len(aliases)).
+		Msg("Upserted CVE aliases")
 
 	return nil
 }

@@ -89,11 +89,7 @@ func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source 
 		// 1. Upsert asset
 		assetResult, err := ingest.UpsertAsset(ctx, db, tenantID, source, &finding.Asset, scannedAt)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Int("index", i).
-				Msg("Failed to upsert asset")
-			return nil, fmt.Errorf("failed to upsert asset for finding %d: %w", i, err)
+			return nil, wrapFindingError(i, "asset", err)
 		}
 
 		if assetResult.NewAsset {
@@ -105,11 +101,7 @@ func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source 
 		// 2. Upsert definition and CVE aliases
 		err = ingest.UpsertDefinitionWithAliases(ctx, db, source, &finding)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Int("index", i).
-				Msg("Failed to upsert definition")
-			return nil, fmt.Errorf("failed to upsert definition for finding %d: %w", i, err)
+			return nil, wrapFindingError(i, "definition", err)
 		}
 
 		// Generate definition UID
@@ -119,11 +111,7 @@ func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source 
 		// 3. Upsert finding instance
 		err = ingest.UpsertFindingInstance(ctx, db, tenantID, assetResult.Asset.ID, definitionUID, &finding)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Int("index", i).
-				Msg("Failed to upsert finding instance")
-			return nil, fmt.Errorf("failed to upsert finding instance %d: %w", i, err)
+			return nil, wrapFindingError(i, "finding instance", err)
 		}
 
 		summary.FindingsUpserted++
@@ -139,13 +127,23 @@ func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source 
 	return summary, nil
 }
 
+// wrapFindingError creates a consistent error message for finding processing failures
+func wrapFindingError(index int, operation string, err error) error {
+	log.Error().
+		Err(err).
+		Int("index", index).
+		Str("operation", operation).
+		Msgf("Failed to %s", operation)
+	return fmt.Errorf("failed to %s for finding %d: %w", operation, index, err)
+}
+
 // IngestSummary represents the summary of ingestion results
 type IngestSummary struct {
-	TotalFindings      int `json:"total_findings"`
-	AssetsCreated      int `json:"assets_created"`
-	AssetsUpdated      int `json:"assets_updated"`
+	TotalFindings        int `json:"total_findings"`
+	AssetsCreated        int `json:"assets_created"`
+	AssetsUpdated        int `json:"assets_updated"`
 	DefinitionsProcessed int `json:"definitions_processed"`
-	FindingsUpserted   int `json:"findings_upserted"`
+	FindingsUpserted     int `json:"findings_upserted"`
 }
 
 // setJSONHeaders sets common JSON response headers

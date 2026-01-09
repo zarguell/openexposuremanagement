@@ -20,10 +20,10 @@ func TestUpsertDefinition(t *testing.T) {
 
 	t.Run("handles different sources", func(t *testing.T) {
 		tests := []struct {
-			name       string
-			source     string
+			name        string
+			source      string
 			sourceDefID string
-			expected   string
+			expected    string
 		}{
 			{"tenable", "tenable", "12345", "tenable-12345"},
 			{"qualys", "qualys", "67890", "qualys-67890"},
