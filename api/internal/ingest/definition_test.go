@@ -1,8 +1,11 @@
 package ingest
 
 import (
+	"context"
 	"testing"
 
+	"github.com/openexposuremanagement/oem/internal/database"
+	"github.com/openexposuremanagement/oem/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -122,15 +125,80 @@ func TestExtractCVEAliases(t *testing.T) {
 
 // TestUpsertDefinitionWithAliases tests the full upsert flow
 func TestUpsertDefinitionWithAliases(t *testing.T) {
+	// Setup test database
+	db := database.SetupTestDB(t)
+	if db == nil {
+		return // Test was skipped
+	}
+
+	ctx := context.Background()
+
 	t.Run("upserts definition and aliases", func(t *testing.T) {
-		// TODO: Implement integration test with real database
-		t.Skip("Integration test - requires database setup")
+		vmFinding := &VMFinding{
+			Finding: VMFindingDetails{
+				DefinitionID: "test-def-1",
+				Title:        "Test Vulnerability",
+				Severity:     "High",
+				CVEs:         []string{"CVE-2023-1234", "CVE-2023-5678"},
+				References:   []string{"https://example.com/1"},
+			},
+		}
+
+		err := UpsertDefinitionWithAliases(ctx, db, "tenable", vmFinding)
+		assert.NoError(t, err)
+
+		// Verify definition was created
+		repo := repository.NewDefinitionRepository(db)
+		def, err := repo.GetDefinition(ctx, "tenable-test-def-1")
+		assert.NoError(t, err)
+		assert.NotNil(t, def)
+		assert.Equal(t, "tenable-test-def-1", def.DefinitionUID)
+		assert.Equal(t, "Test Vulnerability", def.Title)
+		assert.Equal(t, "High", def.SeverityDefault)
+
+		// Verify aliases were created
+		aliases, err := repo.GetAliasesForDefinition(ctx, "tenable-test-def-1")
+		assert.NoError(t, err)
+		assert.Len(t, aliases, 2)
+
+		// Check specific aliases
+		cveAliases := make(map[string]bool)
+		for _, alias := range aliases {
+			if alias.AliasType == "CVE" {
+				cveAliases[alias.AliasValue] = true
+			}
+		}
+		assert.True(t, cveAliases["CVE-2023-1234"])
+		assert.True(t, cveAliases["CVE-2023-5678"])
 	})
 
 	t.Run("is idempotent on repeated calls", func(t *testing.T) {
-		// TODO: Test that calling upsert twice with same data
-		// doesn't create duplicates
-		t.Skip("Integration test - requires database setup")
+		vmFinding := &VMFinding{
+			Finding: VMFindingDetails{
+				DefinitionID: "test-def-2",
+				Title:        "Another Test Vulnerability",
+				Severity:     "Medium",
+				CVEs:         []string{"CVE-2023-9999"},
+			},
+		}
+
+		// Call upsert twice
+		err := UpsertDefinitionWithAliases(ctx, db, "qualys", vmFinding)
+		assert.NoError(t, err)
+		err = UpsertDefinitionWithAliases(ctx, db, "qualys", vmFinding)
+		assert.NoError(t, err)
+
+		// Verify only one definition exists
+		repo := repository.NewDefinitionRepository(db)
+		definitions, err := repo.GetBySourceAndID(ctx, "qualys", "test-def-2")
+		assert.NoError(t, err)
+		assert.NotNil(t, definitions)
+
+		// Verify only one set of aliases exists
+		aliases, err := repo.GetAliasesForDefinition(ctx, "qualys-test-def-2")
+		assert.NoError(t, err)
+		assert.Len(t, aliases, 1)
+		assert.Equal(t, "CVE-2023-9999", aliases[0].AliasValue)
 	})
 }
 

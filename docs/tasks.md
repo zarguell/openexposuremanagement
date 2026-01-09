@@ -164,148 +164,148 @@ Push ingestion endpoint that normalizes identifiers, matches/creates assets, ups
   - **Dependencies:** Implement identifier normalization helpers; Database schema & migrations → Create asset tables & identifier indexes
   - **Estimated tokens:** 3000
 
-- [ ] Task: Implement asset upsert (create/update seen times + identifiers)
+- [x] Task: Implement asset upsert (create/update seen times + identifiers)
   - **Description:** When matched, update `last_seen_at`; when new, create asset + identifiers with `first_seen_at/last_seen_at`.
   - **Acceptance criteria:** Idempotent ingest; repeated payload doesn’t create duplicates; identifiers update time windows.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement deterministic asset matching (rule engine + “why matched”)
   - **Estimated tokens:** 2900
 
-- [ ] Task: Implement definition + alias upsert (CVE aliases)
+- [x] Task: Implement definition + alias upsert (CVE aliases)
   - **Description:** Upsert `finding_definitions` and attach CVE aliases in `finding_definition_aliases`.
   - **Acceptance criteria:** Same definition from same source updates metadata; CVE aliases are deduped; unit tests verify.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Define ingestion payload schema & validation; Database schema & migrations → Create findings tables & indexes
   - **Estimated tokens:** 2400
 
-- [ ] Task: Implement finding instance upsert (observation window)
+- [x] Task: Implement finding instance upsert (observation window)
   - **Description:** Upsert `finding_instances` per asset+definition with first/last observed tracking and evidence JSON.
   - **Acceptance criteria:** First observed only moves earlier; last observed only moves later; scanner status recorded.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement asset upsert (create/update seen times + identifiers); Implement definition + alias upsert (CVE aliases)
   - **Estimated tokens:** 2800
 
-- [ ] Task: Compute effective status on write (baseline)
+- [x] Task: Compute effective status on write (baseline)
   - **Description:** Implement effective status computation using scanner status and current approved suppressions at CVE-level.
   - **Acceptance criteria:** Writes set `effective_status`, `effective_reason`, and `effective_revision` from `tenant_policy_state`.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement finding instance upsert (observation window); Database schema & migrations → Create suppression workflow tables
   - **Estimated tokens:** 3000
 
-- [ ] Task: Implement POST /ingest/vm/findings end-to-end
+- [x] Task: Implement POST /ingest/vm/findings end-to-end
   - **Description:** Wire the endpoint to run validation → match/upsert asset → upsert definition/aliases → upsert instance → compute effective status.
   - **Acceptance criteria:** End-to-end integration test ingests sample payload; enforces source binding rule on API key.
   - **Validation command:** `go test ./...`
   - **Dependencies:** All tasks in “VM ingestion pipeline (assets + findings)”
   - **Estimated tokens:** 3000
 
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Consolidate ingestion transaction boundaries, error handling, and repeated query code; reduce cyclomatic complexity.
-  - **Acceptance criteria:** `go test ./...` passes; lint/static checks pass; ingestion logic readable and modular.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in “VM ingestion pipeline (assets + findings)”
-  - **Estimated tokens:** 1700
+ - [x] Task: Milestone refactor & duplication pass
+   - **Description:** Consolidate ingestion transaction boundaries, error handling, and repeated query code; reduce cyclomatic complexity.
+   - **Acceptance criteria:** `go test ./...` passes; lint/static checks pass; ingestion logic readable and modular.
+   - **Validation command:** `go test ./...`
+   - **Dependencies:** All tasks in “VM ingestion pipeline (assets + findings)”
+   - **Estimated tokens:** 1700
 
 ***
 
 ## Milestone: Query APIs (assets/findings/dashboard)
 Provide Postgres-backed browsing, filtering, and enrichment joins; reset context after this milestone.
 
-- [ ] Task: Implement GET /assets (search by canonical/hostname)
+- [x] Task: Implement GET /assets (search by canonical/hostname)
   - **Description:** Add query parameter handling and DB search (ILIKE/trigram optional), returning paginated results.
   - **Acceptance criteria:** Search returns stable pagination; tenant scoping enforced; tests cover query parsing.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Go API foundation → Implement RBAC middleware (admin/analyst/viewer); Database schema & migrations → Create asset tables & identifier indexes
   - **Estimated tokens:** 2600
 
-- [ ] Task: Implement GET /assets/{id} (details + identifiers + finding counts)
+- [x] Task: Implement GET /assets/{id} (details + identifiers + finding counts)
   - **Description:** Return asset record plus identifiers and summary counts of findings by effective status.
   - **Acceptance criteria:** 404 on missing/foreign-tenant asset; response shape matches UI needs; unit tests.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement GET /assets (search by canonical/hostname)
   - **Estimated tokens:** 2500
 
-- [ ] Task: Implement GET /findings with filters
+- [x] Task: Implement GET /findings with filters
   - **Description:** Support filters: `source`, severity, `effective_status`, `cve`, asset name; include suppression toggles.
   - **Acceptance criteria:** Queries are indexed appropriately; returns scanner + effective status + reason + CVEs.
   - **Validation command:** `go test ./...`
   - **Dependencies:** VM ingestion pipeline → Implement POST /ingest/vm/findings end-to-end; Database schema & migrations → Create findings tables & indexes
   - **Estimated tokens:** 3000
 
-- [ ] Task: Join threat intel fields into findings response
+- [x] Task: Join threat intel fields into findings response
   - **Description:** Enrich findings by joining CVE aliases to `intel_cve` (EPSS score/percentile, KEV flags/dates).
   - **Acceptance criteria:** If intel missing, fields are null; if present, fields populate; tests with seeded intel rows.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement GET /findings with filters; Database schema & migrations → Create threat intel cache tables
   - **Estimated tokens:** 2400
 
-- [ ] Task: Implement dashboard endpoints (counts + intel status)
+- [x] Task: Implement dashboard endpoints (counts + intel status)
   - **Description:** Add endpoints that read from materialized views plus `GET /intel/status` for “Intel last updated at”.
   - **Acceptance criteria:** Dashboard endpoint latency is low; intel status returns latest run time and error (if any).
   - **Validation command:** `go test ./...`
   - **Dependencies:** Database schema & migrations → Add dashboard materialized views + concurrent refresh readiness; Threat intel cache tables
   - **Estimated tokens:** 2700
 
-- [ ] Task: Add materialized view refresher job
+- [x] Task: Add materialized view refresher job
   - **Description:** Add periodic refresh (every few minutes) using `REFRESH MATERIALIZED VIEW CONCURRENTLY` where configured and valid.[1]
   - **Acceptance criteria:** Refresh runs without blocking reads; failures logged and visible via health/status endpoint.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement dashboard endpoints (counts + intel status)
   - **Estimated tokens:** 2600
 
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Deduplicate filter parsing, pagination structs, and SQL fragments; ensure consistent response envelopes.
-  - **Acceptance criteria:** `go test ./...` passes; lint passes; no duplicated query-building logic.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in “Query APIs (assets/findings/dashboard)”
-  - **Estimated tokens:** 1700
+- [x] Task: Milestone refactor & duplication pass
+   - **Description:** Deduplicate filter parsing, pagination structs, and SQL fragments; ensure consistent response envelopes.
+   - **Acceptance criteria:** `go test ./...` passes; lint passes; no duplicated query-building logic.
+   - **Validation command:** `go test ./...`
+   - **Dependencies:** All tasks in “Query APIs (assets/findings/dashboard)”
+   - **Estimated tokens:** 1700
 
 ***
 
 ## Milestone: Threat intel sync (NVD + EPSS + KEV)
 Daily scheduled TI sync plus manual refresh and status display; reset context after this milestone.
 
-- [ ] Task: Implement NVD fetch + upsert
+- [x] Task: Implement NVD fetch + upsert
   - **Description:** Fetch NVD CVE data (description, CVSS score, CVSS vector) via NVD API v2.0 and upsert into `intel_cve` with `updated_at`.
   - **Acceptance criteria:** Handles NVD API rate limits; idempotent upsert; records sync run; resilient to partial failures.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Database schema & migrations → Create threat intel cache tables; Go API foundation → Implement DB layer (sqlc or minimal repository)
   - **Estimated tokens:** 3000
 
-- [ ] Task: Implement EPSS fetch + upsert
+- [x] Task: Implement EPSS fetch + upsert
   - **Description:** Fetch EPSS snapshot data and upsert EPSS fields into `intel_cve` with `updated_at`.
   - **Acceptance criteria:** Handles paging/large files; idempotent upsert; records sync run.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement NVD fetch + upsert
   - **Estimated tokens:** 2800
 
-- [ ] Task: Implement KEV fetch + upsert
+- [x] Task: Implement KEV fetch + upsert
   - **Description:** Fetch CISA KEV catalog and upsert KEV fields into `intel_cve`; record sync run.
   - **Acceptance criteria:** Idempotent; updates `is_kev`, dates; resilient to partial failures.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement EPSS fetch + upsert
   - **Estimated tokens:** 2600
 
-- [ ] Task: Implement scheduled job + admin refresh endpoint
+- [x] Task: Implement scheduled job + admin refresh endpoint
   - **Description:** Add daily scheduler and `POST /intel/refresh` to trigger sync; avoid overlapping runs.
   - **Acceptance criteria:** Manual refresh returns job accepted/completed; scheduler can be disabled in dev/test.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement KEV fetch + upsert
   - **Estimated tokens:** 2600
 
-- [ ] Task: Implement GET /intel/status
+- [x] Task: Implement GET /intel/status
   - **Description:** Return latest sync run time/status and counts/errors for UI "Intel last updated at".
   - **Acceptance criteria:** Always returns a coherent status even if no run yet; tested.
   - **Validation command:** `go test ./...`
   - **Dependencies:** Implement scheduled job + admin refresh endpoint
   - **Estimated tokens:** 2000
 
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Deduplicate HTTP fetching, parsing, and upsert logic; centralize sync run recording.
-  - **Acceptance criteria:** Tests pass; lint passes; sync code shared and readable.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in "Threat intel sync (NVD + EPSS + KEV)"
-  - **Estimated tokens:** 1700
+- [x] Task: Milestone refactor & duplication pass
+   - **Description:** Deduplicate HTTP fetching, parsing, and upsert logic; centralize sync run recording.
+   - **Acceptance criteria:** Tests pass; lint passes; sync code shared and readable.
+   - **Validation command:** `go test ./...`
+   - **Dependencies:** All tasks in "Threat intel sync (NVD + EPSS + KEV)"
+   - **Estimated tokens:** 1700
 
 ***
 
@@ -354,7 +354,7 @@ Implement CVE-level suppression proposal flow and async effective-status recompu
 ## Milestone: React SPA (login + core pages)
 Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings with NVD enrichment; reset context after this milestone.
 
-- [ ] Task: Bootstrap Vite React app with routing and env config
+- [x] Task: Bootstrap Vite React app with routing and env config
   - **Description:** Set up Vite React SPA, router, API base URL config, and error boundary.
   - **Acceptance criteria:** App starts; routes render; config is environment-driven.
   - **Validation command:** `cd ui && npm test` (or `npm run build`)

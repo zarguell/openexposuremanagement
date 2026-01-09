@@ -1,9 +1,13 @@
 package ingest
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/openexposuremanagement/oem/internal/database"
+	"github.com/openexposuremanagement/oem/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -231,21 +235,129 @@ func TestEvidenceHandling(t *testing.T) {
 
 // TestUpsertFindingInstance tests the full upsert flow
 func TestUpsertFindingInstance(t *testing.T) {
+	// Setup test database
+	db := database.SetupTestDB(t)
+	if db == nil {
+		return // Test was skipped
+	}
+
+	ctx := context.Background()
+	tenantID := database.CreateTestTenant(t, db)
+
 	t.Run("upserts_finding_with_observation_window", func(t *testing.T) {
-		// TODO: Integration test with database
-		t.Skip("Integration test - requires database setup")
+		// Create test asset and definition
+		asset := createTestAssetForFinding(t, db, tenantID, "test-host.example.com", time.Now())
+		assetID := asset.ID
+		definitionUID := "test-def-1"
+		createTestFindingDefinition(t, db, definitionUID, "tenable", "12345", "Test Finding")
+
+		vmFinding := &VMFinding{
+			Status:     "open",
+			LastFound:  time.Now(),
+			FirstFound: time.Now().Add(-1 * time.Hour),
+			Evidence: map[string]interface{}{
+				"port": 443,
+			},
+			Finding: VMFindingDetails{
+				DefinitionID: "12345",
+				Title:        "Test Finding",
+			},
+		}
+
+		err := UpsertFindingInstance(ctx, db, tenantID, assetID, definitionUID, vmFinding)
+		assert.NoError(t, err)
+
+		// Verify finding instance was created
+		findingRepo := repository.NewFindingInstanceRepository(db)
+		instance, err := findingRepo.GetByTenantAssetAndDefinition(ctx, tenantID, assetID, definitionUID)
+		assert.NoError(t, err)
+		assert.NotNil(t, instance)
+		assert.Equal(t, "open", instance.ScannerStatus)
+		assert.Equal(t, "open", instance.EffectiveStatus)
+		assert.Equal(t, float64(443), instance.EvidenceJSON["port"])
 	})
 
 	t.Run("is_idempotent_on_repeated_calls", func(t *testing.T) {
-		// TODO: Integration test with database
-		t.Skip("Integration test - requires database setup")
+		// Create test asset and definition
+		asset := createTestAssetForFinding(t, db, tenantID, "test-host2.example.com", time.Now())
+		assetID := asset.ID
+		definitionUID := "test-def-2"
+		createTestFindingDefinition(t, db, definitionUID, "qualys", "67890", "Test Finding 2")
+
+		vmFinding := &VMFinding{
+			Status:    "open",
+			LastFound: time.Now(),
+			Finding: VMFindingDetails{
+				DefinitionID: "67890",
+				Title:        "Test Finding 2",
+			},
+		}
+
+		// Call upsert twice
+		err := UpsertFindingInstance(ctx, db, tenantID, assetID, definitionUID, vmFinding)
+		assert.NoError(t, err)
+		err = UpsertFindingInstance(ctx, db, tenantID, assetID, definitionUID, vmFinding)
+		assert.NoError(t, err)
+
+		// Verify only one instance exists
+		findingRepo := repository.NewFindingInstanceRepository(db)
+		instances, err := findingRepo.GetByTenantAndAsset(ctx, tenantID, assetID)
+		assert.NoError(t, err)
+		assert.Len(t, instances, 1)
 	})
 
 	t.Run("updates_observation_window_correctly", func(t *testing.T) {
-		// TODO: Integration test with database
-		// Verify first_observed only moves earlier
-		// Verify last_observed only moves later
-		t.Skip("Integration test - requires database setup")
+		// Create test asset and definition
+		asset := createTestAssetForFinding(t, db, tenantID, "test-host3.example.com", time.Now())
+		assetID := asset.ID
+		definitionUID := "test-def-3"
+		createTestFindingDefinition(t, db, definitionUID, "rapid7", "99999", "Test Finding 3")
+
+		findingRepo := repository.NewFindingInstanceRepository(db)
+
+		// First upsert with initial timestamps
+		firstTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+		vmFinding1 := &VMFinding{
+			Status:     "open",
+			LastFound:  firstTime,
+			FirstFound: firstTime.Add(-1 * time.Hour),
+			Finding: VMFindingDetails{
+				DefinitionID: "99999",
+				Title:        "Test Finding 3",
+			},
+		}
+
+		err := UpsertFindingInstance(ctx, db, tenantID, assetID, definitionUID, vmFinding1)
+		assert.NoError(t, err)
+
+		// Verify initial timestamps
+		instance, err := findingRepo.GetByTenantAssetAndDefinition(ctx, tenantID, assetID, definitionUID)
+		assert.NoError(t, err)
+		assert.Equal(t, firstTime.Add(-1*time.Hour), instance.FirstObservedAt)
+		assert.Equal(t, firstTime, instance.LastObservedAt)
+
+		// Second upsert with later last_found (should update)
+		secondTime := time.Date(2024, 1, 2, 12, 0, 0, 0, time.UTC)
+		vmFinding2 := &VMFinding{
+			Status:     "open",
+			LastFound:  secondTime,
+			FirstFound: secondTime.Add(-30 * time.Minute), // Earlier first_found
+			Finding: VMFindingDetails{
+				DefinitionID: "99999",
+				Title:        "Test Finding 3",
+			},
+		}
+
+		err = UpsertFindingInstance(ctx, db, tenantID, assetID, definitionUID, vmFinding2)
+		assert.NoError(t, err)
+
+		// Verify timestamps were updated correctly
+		instance, err = findingRepo.GetByTenantAssetAndDefinition(ctx, tenantID, assetID, definitionUID)
+		assert.NoError(t, err)
+		// First observed should move earlier
+		assert.Equal(t, secondTime.Add(-30*time.Minute), instance.FirstObservedAt)
+		// Last observed should move later
+		assert.Equal(t, secondTime, instance.LastObservedAt)
 	})
 }
 
@@ -313,5 +425,50 @@ func TestFindingInstance_EdgeCases(t *testing.T) {
 				assert.Equal(t, tt.definitionUID, instance.DefinitionUID)
 			}
 		})
+	}
+}
+
+// Helper functions for integration tests
+
+var ctx = context.Background()
+
+// createTestAssetForFinding creates a test asset and returns it
+func createTestAssetForFinding(t *testing.T, db *sqlx.DB, tenantID int64, canonicalName string, seenAt time.Time) *repository.Asset {
+	t.Helper()
+
+	asset := &repository.Asset{
+		TenantID:      tenantID,
+		CanonicalName: canonicalName,
+		FirstSeenAt:   seenAt,
+		LastSeenAt:    seenAt,
+		IsActive:      true,
+	}
+
+	assetRepo := repository.NewAssetRepository(db)
+	err := assetRepo.Create(ctx, asset)
+	if err != nil {
+		t.Fatalf("failed to create test asset: %v", err)
+	}
+
+	return asset
+}
+
+// createTestFindingDefinition creates a test finding definition
+func createTestFindingDefinition(t *testing.T, db *sqlx.DB, definitionUID, source, sourceDefID, title string) {
+	t.Helper()
+
+	def := &repository.FindingDefinition{
+		DefinitionUID:      definitionUID,
+		Source:             source,
+		SourceDefinitionID: sourceDefID,
+		Title:              title,
+		SeverityDefault:    "High",
+		ReferencesJSON:     []string{"https://example.com"},
+	}
+
+	defRepo := repository.NewDefinitionRepository(db)
+	err := defRepo.UpsertDefinition(ctx, def)
+	if err != nil {
+		t.Fatalf("failed to create test definition: %v", err)
 	}
 }
