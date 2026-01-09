@@ -37,7 +37,7 @@ CREATE TABLE api_keys (
     bound_source VARCHAR(100),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     revoked_at TIMESTAMPTZ,
-    CONSTRAINT api_keys_not_revoked revoked_at IS NULL
+    CONSTRAINT api_keys_not_revoked CHECK (revoked_at IS NULL)
 );
 
 -- Indexes for performance
