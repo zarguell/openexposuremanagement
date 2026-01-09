@@ -58,12 +58,15 @@ func (r *DefinitionRepository) UpsertDefinition(ctx context.Context, def *Findin
 	`
 
 	var referencesJSON []byte
-	if def.ReferencesJSON != nil {
+	if def.ReferencesJSON != nil && len(def.ReferencesJSON) > 0 {
 		var err error
 		referencesJSON, err = json.Marshal(def.ReferencesJSON)
 		if err != nil {
 			return err
 		}
+	} else {
+		// Use empty JSON array for nil/empty references
+		referencesJSON = []byte("[]")
 	}
 
 	err := r.db.QueryRowContext(ctx, query,
