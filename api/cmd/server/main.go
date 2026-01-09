@@ -8,12 +8,48 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/openexposuremanagement/oem/internal/config"
 	"github.com/openexposuremanagement/oem/internal/database"
 	"github.com/openexposuremanagement/oem/internal/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
+
+// initializeDemoData creates default tenant and roles for demo mode
+func initializeDemoData(db *sqlx.DB) error {
+	// Check if tenant 1 exists
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM tenants WHERE id = 1)").Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check tenant existence: %w", err)
+	}
+
+	if !exists {
+		// Create default tenant
+		_, err = db.Exec("INSERT INTO tenants (id, name) VALUES (1, 'Demo Tenant') ON CONFLICT (id) DO NOTHING")
+		if err != nil {
+			return fmt.Errorf("failed to create demo tenant: %w", err)
+		}
+
+		// Create default roles
+		_, err = db.Exec(`
+			INSERT INTO roles (tenant_id, name) VALUES
+			(1, 'admin'),
+			(1, 'analyst'),
+			(1, 'viewer')
+			ON CONFLICT (tenant_id, name) DO NOTHING
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create demo roles: %w", err)
+		}
+
+		log.Info().Msg("Demo tenant and roles initialized")
+	}
+
+	return nil
+}
 
 func main() {
 	// Load configuration
@@ -41,6 +77,15 @@ func main() {
 	defer db.Close()
 
 	log.Info().Msg("Database connection established")
+
+	// Initialize demo mode if enabled
+	if os.Getenv("DEMO_MODE") == "true" {
+		log.Warn().Msg("🔓 DEMO MODE: Initializing demo tenant and roles")
+		if err := initializeDemoData(db); err != nil {
+			log.Error().Err(err).Msg("Failed to initialize demo data")
+			os.Exit(1)
+		}
+	}
 
 	// Create server
 	srv := server.New(cfg, db)

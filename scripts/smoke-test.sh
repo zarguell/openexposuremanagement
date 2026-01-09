@@ -118,8 +118,7 @@ echo "🌱 Seeding sample data..."
 if [ -f "scripts/seed-data.go" ]; then
     # Wait a bit more for API to be fully ready
     sleep 5
-    cd scripts && go run seed-data.go -api-url="http://localhost:8080" -demo -verbose
-    cd ..
+    go run scripts/seed-data.go -api-url="http://localhost:8080" -data-dir="sample-data" -demo -verbose
     print_status "Sample data seeded"
 else
     print_warning "Seed script not found, skipping data seeding"

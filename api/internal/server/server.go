@@ -40,24 +40,24 @@ func (s *Server) registerRoutes() {
 	apiV1 := http.NewServeMux()
 
 	// User endpoints
-	apiV1.HandleFunc("/me", handlers.GetMe)
+	apiV1.HandleFunc("/me", handlers.RequireAuth(handlers.GetMe))
 
-	// Ingestion endpoints
-	apiV1.HandleFunc("/ingest/vm/findings", handlers.IngestVMFindings(s.db))
+	// Ingestion endpoints (may not need auth in demo mode)
+	apiV1.HandleFunc("/ingest/vm/findings", handlers.RequireAuth(handlers.IngestVMFindings(s.db)))
 
 	// Asset endpoints
-	apiV1.HandleFunc("/assets", handlers.ListAssets(s.db))
-	apiV1.HandleFunc("/assets/", handlers.GetAssetByID(s.db))
+	apiV1.HandleFunc("/assets", handlers.RequireAuth(handlers.ListAssets(s.db)))
+	apiV1.HandleFunc("/assets/", handlers.RequireAuth(handlers.GetAssetByID(s.db)))
 
 	// Findings endpoints
-	apiV1.Handle("/findings", handlers.ListFindings(s.db))
+	apiV1.HandleFunc("/findings", handlers.RequireAuth(handlers.ListFindings(s.db)))
 
 	// Dashboard endpoints
-	apiV1.Handle("/dashboard", handlers.GetDashboard(s.db))
+	apiV1.HandleFunc("/dashboard", handlers.RequireAuth(handlers.GetDashboard(s.db)))
 
 	// Intel endpoints
-	apiV1.Handle("/intel/status", handlers.GetIntelStatus(s.db))
-	apiV1.Handle("/intel/refresh", handlers.RefreshIntel(s.db))
+	apiV1.HandleFunc("/intel/status", handlers.RequireAuth(handlers.GetIntelStatus(s.db)))
+	apiV1.HandleFunc("/intel/refresh", handlers.RequireRole("admin")(handlers.RefreshIntel(s.db)))
 
 	// Mount API v1
 	s.router.Handle("/api/v1/", http.StripPrefix("/api/v1", apiV1))
