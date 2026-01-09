@@ -4,15 +4,24 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
 
 function Dashboard() {
-  const { data: dashboard, isLoading, error } = useQuery({
+  const { data: dashboard, isLoading, error, isError, isSuccess } = useQuery({
     queryKey: ['dashboard'],
     queryFn: apiClient.getDashboard,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  console.log('Dashboard data:', dashboard);
-  console.log('Dashboard loading:', isLoading);
-  console.log('Dashboard error:', error);
+  console.log('📊 Dashboard state:', {
+    isLoading,
+    isError,
+    isSuccess,
+    error: error instanceof Error ? error.message : String(error),
+    dataKeys: dashboard ? Object.keys(dashboard) : 'no data',
+    timestamp: new Date().toISOString(),
+  });
+
+  if (dashboard) {
+    console.log('📊 Dashboard data:', JSON.stringify(dashboard, null, 2));
+  }
 
   const { data: intelStatus } = useQuery({
     queryKey: ['intel-status'],

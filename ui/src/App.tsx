@@ -5,6 +5,7 @@ import AuthCallback from './auth/AuthCallback'
 import ProtectedRoute from './auth/ProtectedRoute'
 import Login from './auth/Login'
 import ErrorBoundary from './components/ErrorBoundary'
+import DebugPanel from './components/DebugPanel'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
 import Findings from './pages/Findings'
@@ -129,6 +130,7 @@ function AppContent() {
           </Routes>
         </ErrorBoundary>
       </main>
+      <DebugPanel visible={isDemoMode} />
     </div>
   );
 }
