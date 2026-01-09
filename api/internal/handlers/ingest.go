@@ -148,36 +148,40 @@ type IngestSummary struct {
 	FindingsUpserted   int `json:"findings_upserted"`
 }
 
+// setJSONHeaders sets common JSON response headers
+func setJSONHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+}
+
+// respondJSON sends a JSON response with the given status code
+func respondJSON(w http.ResponseWriter, status int, response interface{}) error {
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(response)
+}
+
 // respondWithSuccess sends a successful response
 func respondWithSuccess(w http.ResponseWriter, summary *IngestSummary) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
+	setJSONHeaders(w)
 	response := map[string]interface{}{
 		"status":  "success",
 		"message": "Findings ingested successfully",
 		"summary": summary,
 	}
-
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusOK, response)
 }
 
 // respondWithError sends an error response
 func respondWithError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
+	setJSONHeaders(w)
 	response := map[string]interface{}{
 		"error": message,
 	}
-
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, status, response)
 }
 
 // respondWithValidationError sends a validation error response
 func respondWithValidationError(w http.ResponseWriter, err error) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	setJSONHeaders(w)
 
 	// Check if it's a ValidationError
 	var validationErr ingest.ValidationError
@@ -190,7 +194,7 @@ func respondWithValidationError(w http.ResponseWriter, err error) {
 				"index":   validationErr.Index,
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		respondJSON(w, http.StatusBadRequest, response)
 		return
 	}
 
@@ -199,5 +203,5 @@ func respondWithValidationError(w http.ResponseWriter, err error) {
 		"error":   "Validation failed",
 		"message": err.Error(),
 	}
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusBadRequest, response)
 }
