@@ -32,4 +32,6 @@ make migrate-up && make migrate-down
 
 ## Do / Don’t
 - Do: env-driven config, tenant scoping everywhere, deterministic asset matching with “why matched”
+- Do: commit early and often. Ensure commits are small logical and related changes. Create new branches so that milestones can be merged to main branch based on new features and implementation.
 - Don’t: hard-code ports/URLs, store SPA tokens in localStorage, bypass authN/authZ in demo mode without an explicit dev flag
+- Don't: commit large unrelated commits.
