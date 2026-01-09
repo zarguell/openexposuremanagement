@@ -62,14 +62,15 @@ Define Postgres schema, indexes, and materialized views to support Postgres-only
   - **Dependencies:** Create asset tables & identifier indexes
   - **Estimated tokens:** 2900
 
-- [x] Task: Create suppression workflow tables
-  - **Description:** Implement `suppressions`, `suppression_reviews`, `tenant_policy_state` with constraints for state transitions and revision tracking.
-  - **Acceptance criteria:** `tenant_policy_state.policy_revision` exists and is incrementable; suppression audit trail stored.
+- ~~Task: Create suppression workflow tables~~ (MOVED TO POST-MVP)
+  - **Description:** ~~Implement `suppressions`, `suppression_reviews`, `tenant_policy_state` with constraints for state transitions and revision tracking.~~
+  - **Acceptance criteria:** ~~`tenant_policy_state.policy_revision` exists and is incrementable; suppression audit trail stored.~~
+  - **Note:** Suppressions workflow is out of scope for MVP. Schema reserved for future implementation.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d suppressions"`
   - **Dependencies:** Create findings tables & indexes
   - **Estimated tokens:** 2800
 
-- [x] Task: Create threat intel cache tables
+- [x] Task: Create threat intel cache tables (with NVD + EPSS + KEV fields)
   - **Description:** Implement `intel_cve` and `intel_sync_runs` tables for EPSS/KEV caching and “last updated” display.
   - **Acceptance criteria:** `intel_cve.cve` is primary key; `intel_sync_runs` records status and errors.
   - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d intel_cve"`
@@ -261,7 +262,56 @@ Provide Postgres-backed browsing, filtering, and enrichment joins; reset context
 
 ***
 
-## Milestone: Suppressions (proposal/approval + recompute)
+## Milestone: Threat intel sync (NVD + EPSS + KEV)
+Daily scheduled TI sync plus manual refresh and status display; reset context after this milestone.
+
+- [ ] Task: Implement NVD fetch + upsert
+  - **Description:** Fetch NVD CVE data (description, CVSS score, CVSS vector) via NVD API v2.0 and upsert into `intel_cve` with `updated_at`.
+  - **Acceptance criteria:** Handles NVD API rate limits; idempotent upsert; records sync run; resilient to partial failures.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Database schema & migrations → Create threat intel cache tables; Go API foundation → Implement DB layer (sqlc or minimal repository)
+  - **Estimated tokens:** 3000
+
+- [ ] Task: Implement EPSS fetch + upsert
+  - **Description:** Fetch EPSS snapshot data and upsert EPSS fields into `intel_cve` with `updated_at`.
+  - **Acceptance criteria:** Handles paging/large files; idempotent upsert; records sync run.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Implement NVD fetch + upsert
+  - **Estimated tokens:** 2800
+
+- [ ] Task: Implement KEV fetch + upsert
+  - **Description:** Fetch CISA KEV catalog and upsert KEV fields into `intel_cve`; record sync run.
+  - **Acceptance criteria:** Idempotent; updates `is_kev`, dates; resilient to partial failures.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Implement EPSS fetch + upsert
+  - **Estimated tokens:** 2600
+
+- [ ] Task: Implement scheduled job + admin refresh endpoint
+  - **Description:** Add daily scheduler and `POST /intel/refresh` to trigger sync; avoid overlapping runs.
+  - **Acceptance criteria:** Manual refresh returns job accepted/completed; scheduler can be disabled in dev/test.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Implement KEV fetch + upsert
+  - **Estimated tokens:** 2600
+
+- [ ] Task: Implement GET /intel/status
+  - **Description:** Return latest sync run time/status and counts/errors for UI "Intel last updated at".
+  - **Acceptance criteria:** Always returns a coherent status even if no run yet; tested.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Implement scheduled job + admin refresh endpoint
+  - **Estimated tokens:** 2000
+
+- [ ] Task: Milestone refactor & duplication pass
+  - **Description:** Deduplicate HTTP fetching, parsing, and upsert logic; centralize sync run recording.
+  - **Acceptance criteria:** Tests pass; lint passes; sync code shared and readable.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** All tasks in "Threat intel sync (NVD + EPSS + KEV)"
+  - **Estimated tokens:** 1700
+
+***
+
+## ~~Milestone: Suppressions (proposal/approval + recompute)~~
+**MOVED TO POST-MVP**
+
 Implement CVE-level suppression proposal flow and async effective-status recompute; reset context after this milestone.
 
 - [ ] Task: Implement suppression proposal endpoint
@@ -296,53 +346,13 @@ Implement CVE-level suppression proposal flow and async effective-status recompu
   - **Description:** Consolidate state machine logic and audit writing; reduce duplicated transaction code.
   - **Acceptance criteria:** Tests pass; lint passes; state transitions clearly centralized.
   - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in “Suppressions (proposal/approval + recompute)”
-  - **Estimated tokens:** 1600
-
-***
-
-## Milestone: Threat intel sync (EPSS + KEV)
-Daily scheduled TI sync plus manual refresh and status display; reset context after this milestone.
-
-- [ ] Task: Implement EPSS fetch + upsert
-  - **Description:** Fetch EPSS snapshot data and upsert into `intel_cve` with `updated_at`.
-  - **Acceptance criteria:** Handles paging/large files; idempotent upsert; records sync run.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** Database schema & migrations → Create threat intel cache tables; Go API foundation → Implement DB layer (sqlc or minimal repository)
-  - **Estimated tokens:** 3000
-
-- [ ] Task: Implement KEV fetch + upsert
-  - **Description:** Fetch CISA KEV catalog and upsert KEV fields into `intel_cve`; record sync run.
-  - **Acceptance criteria:** Idempotent; updates `is_kev`, dates; resilient to partial failures.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** Implement EPSS fetch + upsert
-  - **Estimated tokens:** 2800
-
-- [ ] Task: Implement scheduled job + admin refresh endpoint
-  - **Description:** Add daily scheduler and `POST /intel/refresh` to trigger sync; avoid overlapping runs.
-  - **Acceptance criteria:** Manual refresh returns job accepted/completed; scheduler can be disabled in dev/test.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** Implement KEV fetch + upsert
-  - **Estimated tokens:** 2600
-
-- [ ] Task: Implement GET /intel/status
-  - **Description:** Return latest sync run time/status and counts/errors for UI “Intel last updated at”.
-  - **Acceptance criteria:** Always returns a coherent status even if no run yet; tested.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** Implement scheduled job + admin refresh endpoint
-  - **Estimated tokens:** 2000
-
-- [ ] Task: Milestone refactor & duplication pass
-  - **Description:** Deduplicate HTTP fetching, parsing, and upsert logic; centralize sync run recording.
-  - **Acceptance criteria:** Tests pass; lint passes; sync code shared and readable.
-  - **Validation command:** `go test ./...`
-  - **Dependencies:** All tasks in “Threat intel sync (EPSS + KEV)”
+  - **Dependencies:** All tasks in "Suppressions (proposal/approval + recompute)"
   - **Estimated tokens:** 1600
 
 ***
 
 ## Milestone: React SPA (login + core pages)
-Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings, and optional suppressions; reset context after this milestone.
+Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings with NVD enrichment; reset context after this milestone.
 
 - [ ] Task: Bootstrap Vite React app with routing and env config
   - **Description:** Set up Vite React SPA, router, API base URL config, and error boundary.
@@ -366,7 +376,7 @@ Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings, and optional 
   - **Estimated tokens:** 2600
 
 - [ ] Task: Build Dashboard page (counts + intel timestamp)
-  - **Description:** Create dashboard widgets for total assets/open findings/suppressed counts and “Intel last updated at”.
+  - **Description:** Create dashboard widgets for total assets, open findings counts by severity, and "Intel last updated at".
   - **Acceptance criteria:** Data loads from API endpoints; empty state handled; timestamp displayed clearly.
   - **Validation command:** `cd ui && npm run build`
   - **Dependencies:** Query APIs → Implement dashboard endpoints (counts + intel status)
@@ -379,16 +389,16 @@ Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings, and optional 
   - **Dependencies:** Query APIs → Implement GET /assets (search by canonical/hostname); Implement GET /assets/{id}
   - **Estimated tokens:** 3000
 
-- [ ] Task: Build Findings List page (filters + intel fields)
-  - **Description:** Implement table with filters (asset, cve, source, severity, effective_status) and display EPSS/KEV fields.
-  - **Acceptance criteria:** Filters map to query params; `include_suppressed` toggle works; performance acceptable for demo dataset.
+- [ ] Task: Build Findings List page (filters + NVD + intel fields)
+  - **Description:** Implement table with filters (asset, cve, source, severity, effective_status) and display NVD description, CVSS score, EPSS/KEV fields.
+  - **Acceptance criteria:** Filters map to query params; performance acceptable for demo dataset; NVD data displayed prominently.
   - **Validation command:** `cd ui && npm run build`
   - **Dependencies:** Query APIs → Implement GET /findings with filters; Join threat intel fields into findings response
-  - **Estimated tokens:** 3000
+  - **Estimated tokens:** 3200
 
-- [ ] Task: (Stretch) Build Suppressions page (propose/list/approve)
-  - **Description:** Add UI to propose CVE suppression and admin approve/reject/revoke; show state changes.
-  - **Acceptance criteria:** Analyst can propose; admin can approve; findings reflect effective status change after recompute window.
+- ~~Task: (Stretch) Build Suppressions page~~ (MOVED TO POST-MVP)
+  - **Description:** ~~Add UI to propose CVE suppression and admin approve/reject/revoke; show state changes.~~
+  - **Note:** Suppressions are out of MVP scope.
   - **Validation command:** `cd ui && npm run build`
   - **Dependencies:** Suppressions milestone → Implement suppression listing endpoints (for UI); Async recompute worker
   - **Estimated tokens:** 3000
@@ -397,7 +407,7 @@ Deliver the demo UI: OIDC PKCE login, dashboard, assets, findings, and optional 
   - **Description:** Deduplicate table/filter components and API hooks; ensure consistent loading/empty/error states.
   - **Acceptance criteria:** `npm run build` passes; lint passes; no repeated query logic.
   - **Validation command:** `cd ui && npm run build`
-  - **Dependencies:** All tasks in “React SPA (login + core pages)”
+  - **Dependencies:** All tasks in "React SPA (login + core pages)"
   - **Estimated tokens:** 1700
 
 ***

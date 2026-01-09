@@ -1,23 +1,24 @@
 # Open Exposure Management (OEM) — MVP Spec (single-machine demo)
 
-## Goal (MVP “aha moment”)
-Demonstrate a working, self-hosted platform that can ingest infrastructure vulnerability findings, unify assets enough to browse/search, and enrich findings with EPSS + CISA KEV (with “last intel updated” visible).  
-Stretch goal: basic suppression proposal/approval (CVE-level) that changes effective status; cross-scanner suppression is not a demo requirement.
+## Goal (MVP "aha moment")
+Demonstrate a working, self-hosted platform that can ingest infrastructure vulnerability findings, unify assets enough to browse/search, and enrich findings with NVD metadata + EPSS + CISA KEV (with "last intel updated" visible).
 
 ## Non-goals (explicitly out of scope for MVP)
-- OpenSearch / external search cluster (Postgres-only).  
-- Pull-mode connectors/workers (push ingestion only).  
-- SEO / SSR / React Server Components.  
-- Full historical reporting (current-state only; keep schema “stretch-ready”).  
+- OpenSearch / external search cluster (Postgres-only).
+- Pull-mode connectors/workers (push ingestion only).
+- SEO / SSR / React Server Components.
+- Full historical reporting (current-state only; keep schema "stretch-ready").
 - Ticketing / Jira/ServiceNow, scheduling, alerting, AI agents.
+- **Suppressions workflow** (proposal/approval/revoke) - moved to post-MVP.
+- Cross-scanner suppression (too complex for MVP baseline).
 
 ---
 
 ## Architecture (single-machine)
 ### Components
-- **Go API**: serves REST API, authN/authZ checks, ingestion, queries, suppressions, TI sync jobs.
+- **Go API**: serves REST API, authN/authZ checks, ingestion, queries, TI sync jobs.
 - **PostgreSQL**: system of record + query engine for MVP search and aggregations.
-- **React SPA** (Vite): dashboard + asset/finding views + suppression UI.
+- **React SPA** (Vite): dashboard + asset/finding views.
 - **Optional (demo/dev only)**: docker-compose to run API + DB + UI on one host.
 
 ### Why no OpenSearch
@@ -34,8 +35,8 @@ For MVP, use Postgres indexes/materialized views for “dashboard-style” analy
 - Store access token **in memory** (not localStorage) to reduce exposure in case of XSS; accept that hard refresh triggers re-auth redirect, typically without re-entering credentials if the IdP session is still valid. [web:32][web:16]
 
 ### Roles (simple)
-- `admin`: manage tenants, users/roles, approve suppressions, configure asset matching.
-- `analyst`: view data, propose suppressions.
+- `admin`: manage tenants, users/roles, configure asset matching, trigger intel refresh.
+- `analyst`: view data, search findings.
 - `viewer`: read-only.
 
 ### API keys (service-to-service)
@@ -69,17 +70,14 @@ Asset locator guidance:
   - MVP: `alias_type='CVE'`
 - `finding_instances(id pk, tenant_id, asset_id fk, definition_uid fk, scanner_status, first_observed_at, last_observed_at, evidence_json, effective_status, effective_reason, effective_revision bigint)`
 
-### Suppressions (CVE-level, proposal/approval)
-- `suppressions(id pk, tenant_id, state, scope_type, scope_ref, match_type, match_value, goal_status, reason, created_by, approved_by, approved_at, effective_from, expires_at, revoked_at)`
-  - MVP `match_type`: `cve`
-- `suppression_reviews(id pk, suppression_id fk, action, actor, timestamp, comment)`
-- `tenant_policy_state(tenant_id pk, policy_revision bigint, updated_at)`
-  - Increment `policy_revision` on approve/revoke to drive async recompute.
-
 ### Threat intel cache (global, shared)
-- `intel_cve(cve pk, is_kev bool, kev_date_added date, kev_due_date date, epss_score numeric, epss_percentile numeric, updated_at timestamptz)`
-- `intel_sync_runs(id pk, started_at, finished_at, status, error_text nullable, source)`  
-  - UI reads latest sync run time and displays “Intel last updated at”.
+- `intel_cve(cve pk, description text, cvss_score numeric, cvss_vector varchar, epss_score numeric, epss_percentile numeric, is_kev bool, kev_date_added date, kev_due_date date, updated_at timestamptz)`
+  - **NVD data**: `description`, `cvss_score`, `cvss_vector` for CVE details
+  - **EPSS data**: `epss_score`, `epss_percentile` for exploitation prediction
+  - **CISA KEV data**: `is_kev`, `kev_date_added`, `kev_due_date` for known exploited vulnerabilities
+- `intel_sync_runs(id pk, started_at, finished_at, status, error_text nullable, source)`
+  - Tracks sync runs for NVD, EPSS, and KEV data sources
+  - UI reads latest sync run time and displays "Intel last updated at".
 
 ---
 
@@ -106,30 +104,33 @@ Qualys notes that DHCP IP dedupe should use timestamp proximity (“IP inactivit
 
 ---
 
-## Effective status computation (on write, with async recompute)
+## Effective status computation (on write)
 ### Why
-Reads should be fast, and CVE-level suppressions can be numerous.
+Reads should be fast, so we compute effective status on write.
 
 ### Mechanism
 - On ingestion (or finding upsert), compute and write:
-  - `effective_status` (e.g., open/accepted_risk/false_positive/fixed)
-  - `effective_reason` (e.g., `suppression:{id}` or `scanner`)
-  - `effective_revision = tenant_policy_state.policy_revision`
-- On suppression approve/revoke:
-  - Increment `policy_revision`.
-  - Enqueue or schedule a background job that recomputes effective status for stale rows:
-    - `WHERE effective_revision < policy_revision`
-  - Batch recompute can take minutes (acceptable for MVP).
+  - `effective_status`: maps scanner status to effective status
+    - `open` → `open`
+    - `fixed`, `fixed_by_verification` → `fixed`
+  - `effective_reason`: always `"scanner"` for MVP (no suppressions)
+  - `effective_revision`: always `0` for MVP (no policy state needed)
+- **Note**: Schema remains stretch-ready for future suppressions feature (post-MVP).
 
 ---
 
 ## Threat intel (TI) module (inside Go API)
 ### Sync behavior
 - Daily scheduled job:
-  - Pull EPSS (point-in-time snapshot) and upsert `intel_cve`.
-  - Pull KEV and upsert `intel_cve` KEV fields.
-- Manual admin endpoint triggers “refresh now”.
-- UI shows “Intel last updated at” from `intel_sync_runs`.
+  - Pull **NVD CVE data** (description, CVSS score, CVSS vector) and upsert `intel_cve`.
+  - Pull EPSS (point-in-time snapshot) and upsert `intel_cve` EPSS fields.
+  - Pull CISA KEV catalog and upsert `intel_cve` KEV fields.
+- Manual admin endpoint triggers "refresh now".
+- UI shows "Intel last updated at" from `intel_sync_runs`.
+- **Data sources**:
+  - NVD API v2.0: https://nvd.nist.gov/developers/vulnerabilities
+  - EPSS data via EPSS tracker: https://www.first.org/epss
+  - CISA KEV catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 
 ---
 
@@ -172,13 +173,7 @@ Base: `/api/v1`
 
 ### Findings
 - `GET /findings?query=...&include_suppressed=false`
-  - Returns `scanner_status`, `effective_status`, `effective_reason`, CVE aliases, EPSS/KEV fields (if present).
-
-### Suppressions (stretch but early)
-- `POST /suppressions/proposals`
-- `POST /suppressions/{id}/approve` (admin)
-- `POST /suppressions/{id}/reject` (admin)
-- `POST /suppressions/{id}/revoke` (admin)
+  - Returns `scanner_status`, `effective_status`, `effective_reason`, CVE aliases, NVD metadata (description, CVSS), EPSS/KEV fields (if present).
 
 ### Threat intel (admin)
 - `POST /intel/refresh` — triggers sync job
@@ -190,15 +185,13 @@ Base: `/api/v1`
 ### Pages
 - Login (OIDC PKCE).
 - Dashboard:
-  - total assets, open findings, suppressed/accepted risk counts
-  - “Intel last updated at”
+  - total assets, open findings counts by severity
+  - "Intel last updated at"
 - Asset Inventory:
   - table + asset details drawer
 - Findings List:
   - table with filters (asset, cve, source, severity, effective_status)
-  - show EPSS score + KEV flags/due date if present
-- Suppressions (stretch):
-  - propose/list/approve
+  - show NVD description, CVSS score, EPSS score + KEV flags/due date if present
 
 ### State
 - React Query for server-state caching/pagination.
@@ -217,5 +210,6 @@ Base: `/api/v1`
 - Ingest sample Tenable/Qualys-like payloads via API key.
 - Assets appear deduped by hostname (DHCP-safe).
 - Findings list searchable and filterable in UI.
-- EPSS/KEV enrichment visible, plus “last updated” timestamp.
-- Optional: admin can propose/approve a CVE suppression and see effective status change within minutes.
+- **NVD enrichment visible** (CVE descriptions, CVSS scores/vectors).
+- EPSS/KEV enrichment visible, plus "last updated" timestamp.
+- Dashboard shows aggregate counts and intel sync status.
