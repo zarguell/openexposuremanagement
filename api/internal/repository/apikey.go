@@ -10,14 +10,14 @@ import (
 
 // APIKey represents an API key in the system
 type APIKey struct {
-	ID           int64      `db:"id" json:"id"`
-	TenantID     int64      `db:"tenant_id" json:"tenant_id"`
-	Name         string     `db:"name" json:"name"`
-	KeyHash      string     `db:"key_hash" json:"key_hash"`
-	ScopesJSON   string     `db:"scopes_json" json:"scopes_json"`
-	BoundSource  *string    `db:"bound_source" json:"bound_source"`
-	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
-	RevokedAt    *time.Time `db:"revoked_at" json:"revoked_at"`
+	ID          int64      `db:"id" json:"id"`
+	TenantID    int64      `db:"tenant_id" json:"tenant_id"`
+	Name        string     `db:"name" json:"name"`
+	KeyHash     string     `db:"key_hash" json:"key_hash"`
+	ScopesJSON  string     `db:"scopes_json" json:"scopes_json"`
+	BoundSource *string    `db:"bound_source" json:"bound_source"`
+	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
+	RevokedAt   *time.Time `db:"revoked_at" json:"revoked_at"`
 }
 
 // APIKeyRepository handles API key data access

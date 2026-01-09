@@ -28,28 +28,28 @@ func TestHashAPIKey(t *testing.T) {
 
 func TestEnforceSourceBinding(t *testing.T) {
 	tests := []struct {
-		name        string
-		boundSource *string
+		name          string
+		boundSource   *string
 		payloadSource string
-		wantErr     bool
+		wantErr       bool
 	}{
 		{
-			name:         "no binding - should allow any source",
-			boundSource:  nil,
+			name:          "no binding - should allow any source",
+			boundSource:   nil,
 			payloadSource: "tenable",
-			wantErr:      false,
+			wantErr:       false,
 		},
 		{
-			name:         "matching source - should allow",
-			boundSource:  stringPtr("tenable"),
+			name:          "matching source - should allow",
+			boundSource:   stringPtr("tenable"),
 			payloadSource: "tenable",
-			wantErr:      false,
+			wantErr:       false,
 		},
 		{
-			name:         "mismatched source - should reject",
-			boundSource:  stringPtr("tenable"),
+			name:          "mismatched source - should reject",
+			boundSource:   stringPtr("tenable"),
 			payloadSource: "qualys",
-			wantErr:      true,
+			wantErr:       true,
 		},
 	}
 

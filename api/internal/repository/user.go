@@ -7,13 +7,13 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID         int64  `db:"id" json:"id"`
-	TenantID   int64  `db:"tenant_id" json:"tenant_id"`
-	Email      string `db:"email" json:"email"`
+	ID          int64  `db:"id" json:"id"`
+	TenantID    int64  `db:"tenant_id" json:"tenant_id"`
+	Email       string `db:"email" json:"email"`
 	DisplayName string `db:"display_name" json:"display_name"`
-	Status     string `db:"status" json:"status"`
-	CreatedAt  string `db:"created_at" json:"created_at"`
-	UpdatedAt  string `db:"updated_at" json:"updated_at"`
+	Status      string `db:"status" json:"status"`
+	CreatedAt   string `db:"created_at" json:"created_at"`
+	UpdatedAt   string `db:"updated_at" json:"updated_at"`
 }
 
 // UserRepository handles user data access

@@ -135,8 +135,8 @@ func TestJWTValidator_AuthMiddleware(t *testing.T) {
 		validator := NewJWTValidator("", "")
 
 		testCases := []struct {
-			name           string
-			authHeader     string
+			name       string
+			authHeader string
 		}{
 			{"missing Bearer prefix", "just-a-token"},
 			{"wrong scheme", "ApiKey token-value"},

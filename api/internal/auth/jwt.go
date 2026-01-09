@@ -19,11 +19,11 @@ const UserContextKey contextKey = "user"
 
 // JWTValidator handles JWT token validation
 type JWTValidator struct {
-	issuerURL    string
-	clientID     string
-	publicKey    *rsa.PublicKey
-	keyCache     map[string]*rsa.PublicKey
-	cacheExpiry  time.Time
+	issuerURL   string
+	clientID    string
+	publicKey   *rsa.PublicKey
+	keyCache    map[string]*rsa.PublicKey
+	cacheExpiry time.Time
 }
 
 // NewJWTValidator creates a new JWT validator
@@ -170,7 +170,7 @@ func (v *JWTValidator) AuthMiddleware(next http.Handler) http.Handler {
 			Token:    tokenString,
 			Claims:   claims,
 			Roles:    []string{"analyst"}, // TODO: Fetch from database
-			TenantID: 1,                  // TODO: Fetch from database (demo mode)
+			TenantID: 1,                   // TODO: Fetch from database (demo mode)
 		}
 
 		// Add to request context

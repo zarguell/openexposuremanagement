@@ -23,11 +23,11 @@ type FindingDefinition struct {
 
 // FindingDefinitionAlias represents an alias for a finding definition (e.g., CVE)
 type FindingDefinitionAlias struct {
-	ID           int64     `db:"id"`
-	DefinitionUID string   `db:"definition_uid"`
-	AliasType    string    `db:"alias_type"`
-	AliasValue   string    `db:"alias_value"`
-	CreatedAt    time.Time `db:"created_at"`
+	ID            int64     `db:"id"`
+	DefinitionUID string    `db:"definition_uid"`
+	AliasType     string    `db:"alias_type"`
+	AliasValue    string    `db:"alias_value"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 // DefinitionRepository handles finding definitions and aliases

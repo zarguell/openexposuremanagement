@@ -6,9 +6,9 @@ import (
 
 // Role constants
 const (
-	RoleAdmin  = "admin"
+	RoleAdmin   = "admin"
 	RoleAnalyst = "analyst"
-	RoleViewer = "viewer"
+	RoleViewer  = "viewer"
 )
 
 // RoleRequirement specifies required roles for endpoint access

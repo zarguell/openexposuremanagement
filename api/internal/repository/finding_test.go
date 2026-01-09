@@ -11,15 +11,15 @@ import (
 func getTestFindingInstance() *FindingInstance {
 	now := time.Now()
 	return &FindingInstance{
-		TenantID:         1,
-		AssetID:          100,
-		DefinitionUID:    "tenable-12345",
-		ScannerStatus:    "open",
-		FirstObservedAt:  now.Add(-24 * time.Hour),
-		LastObservedAt:   now,
-		EvidenceJSON:     map[string]interface{}{"port": 443},
-		EffectiveStatus:  "open",
-		EffectiveReason:  "scanner",
+		TenantID:          1,
+		AssetID:           100,
+		DefinitionUID:     "tenable-12345",
+		ScannerStatus:     "open",
+		FirstObservedAt:   now.Add(-24 * time.Hour),
+		LastObservedAt:    now,
+		EvidenceJSON:      map[string]interface{}{"port": 443},
+		EffectiveStatus:   "open",
+		EffectiveReason:   "scanner",
 		EffectiveRevision: 0,
 	}
 }
