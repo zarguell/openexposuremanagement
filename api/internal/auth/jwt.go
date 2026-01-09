@@ -141,6 +141,12 @@ func (v *JWTValidator) AuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := authHeader[7:]
 
+		// Check for empty token
+		if tokenString == "" {
+			http.Error(w, "Empty bearer token", http.StatusUnauthorized)
+			return
+		}
+
 		// Validate token
 		claims, err := v.ValidateToken(tokenString)
 		if err != nil {
