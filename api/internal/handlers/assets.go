@@ -12,16 +12,10 @@ import (
 
 // ListAssets handles GET /assets
 func ListAssets(db *sqlx.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return MethodsAllowed(http.MethodGet)(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// Only accept GET
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Extract user context
+		// Get user context from middleware
 		userCtx, err := auth.GetUserContext(r)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get user context")
@@ -59,21 +53,15 @@ func ListAssets(db *sqlx.DB) http.HandlerFunc {
 		}
 
 		respondWithAssetList(w, result)
-	}
+	}))
 }
 
 // GetAssetByID handles GET /assets/{id}
 func GetAssetByID(db *sqlx.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return MethodsAllowed(http.MethodGet)(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// Only accept GET
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Extract user context
+		// Get user context from middleware
 		userCtx, err := auth.GetUserContext(r)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get user context")
@@ -103,7 +91,7 @@ func GetAssetByID(db *sqlx.DB) http.HandlerFunc {
 		}
 
 		respondWithAssetDetail(w, assetDetail)
-	}
+	}))
 }
 
 // parseAssetID extracts the asset ID from the URL path
