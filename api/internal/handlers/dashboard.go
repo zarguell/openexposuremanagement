@@ -70,12 +70,20 @@ func RefreshDashboardViews(db *sqlx.DB) http.HandlerFunc {
 		dashRepo := repository.NewDashboardRepository(db)
 		err = dashRepo.RefreshMaterializedViews(ctx)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to refresh materialized views")
+			log.Error().Err(err).Int64("tenant_id", userCtx.TenantID).Msg("Failed to refresh materialized views")
 			respondWithError(w, http.StatusInternalServerError, "Failed to refresh materialized views")
 			return
 		}
 
-		log.Info().Msg("Dashboard materialized views refreshed successfully")
+		log.Info().Int64("tenant_id", userCtx.TenantID).Msg("Dashboard materialized views refreshed successfully")
+
+		// Verify the refresh worked by checking the data
+		data, err := dashRepo.GetTenantData(ctx, userCtx.TenantID)
+		if err != nil {
+			log.Warn().Err(err).Int64("tenant_id", userCtx.TenantID).Msg("Could not verify refreshed data")
+		} else {
+			log.Info().Int64("tenant_id", userCtx.TenantID).Int("assets", data.Assets.TotalAssets).Int("findings", data.Findings.OpenCount).Msg("Refreshed data verification")
+		}
 
 		setJSONHeaders(w)
 		respondJSON(w, http.StatusOK, map[string]interface{}{
