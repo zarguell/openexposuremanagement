@@ -52,6 +52,20 @@ services:
       - oem-network
     restart: unless-stopped
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: oem-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@oem.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - oem-network
+    restart: unless-stopped
+
 volumes:
   postgres-data:
 

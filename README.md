@@ -27,6 +27,12 @@ cd api && DEMO_MODE=true go run ./cmd/server
 
 # Terminal 2 - Frontend
 cd ui && npm run dev
+
+# Or with Docker Compose:
+docker compose up -d
+# Frontend: http://localhost:80
+# Backend API: http://localhost:8080
+# PgAdmin: http://localhost:5050 (admin@oem.local / admin)
 ```
 
 **⚠️ Security Warning**: Demo mode disables authentication entirely. This is NOT secure for production use!

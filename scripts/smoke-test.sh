@@ -130,7 +130,10 @@ echo "🔄 Refreshing dashboard materialized views..."
 if curl -s -f -X POST "http://localhost:8080/api/v1/dashboard/refresh" > /dev/null 2>&1; then
     print_status "Materialized views refreshed"
 else
-    print_warning "Failed to refresh materialized views - dashboard may show stale data"
+    print_error "Failed to refresh materialized views"
+    echo "Response:"
+    curl -v -X POST "http://localhost:8080/api/v1/dashboard/refresh" 2>&1 | head -20
+    exit 1
 fi
 
 # Test key API endpoints
@@ -138,10 +141,28 @@ echo ""
 echo "🧪 Testing API endpoints..."
 
 # Test dashboard
-if curl -s -f "http://localhost:8080/api/v1/dashboard" > /dev/null 2>&1; then
+DASHBOARD_RESPONSE=$(curl -s "http://localhost:8080/api/v1/dashboard" 2>/dev/null)
+if [ $? -eq 0 ] && echo "$DASHBOARD_RESPONSE" | jq -e '.assets' > /dev/null 2>&1; then
     print_status "Dashboard endpoint responding"
+
+    # Check if we have data
+    ASSET_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.assets.total_assets // 0')
+    FINDING_COUNT=$(echo "$DASHBOARD_RESPONSE" | jq -r '.findings.open_count // 0')
+
+    if [ "$ASSET_COUNT" -gt 0 ]; then
+        print_status "Dashboard shows $ASSET_COUNT assets"
+    else
+        print_warning "Dashboard shows 0 assets - data may not be loaded"
+    fi
+
+    if [ "$FINDING_COUNT" -gt 0 ]; then
+        print_status "Dashboard shows $FINDING_COUNT open findings"
+    else
+        print_warning "Dashboard shows 0 findings - materialized views may need refresh"
+    fi
 else
     print_error "Dashboard endpoint failed"
+    echo "Response: $DASHBOARD_RESPONSE"
     exit 1
 fi
 
@@ -176,22 +197,42 @@ echo "📊 Validating seeded data..."
 # Check if jq is available for JSON parsing
 if command -v jq &> /dev/null; then
     # Check if assets were created
-    ASSET_COUNT=$(curl -s "http://localhost:8080/api/v1/assets" | jq '.pagination.total // 0' 2>/dev/null || echo "0")
+    ASSETS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/assets" 2>/dev/null)
+    ASSET_COUNT=$(echo "$ASSETS_RESPONSE" | jq '.pagination.total // 0' 2>/dev/null || echo "0")
     if [ "$ASSET_COUNT" -gt 0 ]; then
-        print_status "Assets data validated ($ASSET_COUNT assets found)"
+        print_status "Assets API validated ($ASSET_COUNT assets found)"
     else
-        print_warning "No assets found - data seeding may have failed"
+        print_warning "Assets API shows 0 assets"
+        echo "Assets response: $ASSETS_RESPONSE"
     fi
 
     # Check if findings were created
-    FINDING_COUNT=$(curl -s "http://localhost:8080/api/v1/findings" | jq '.total // 0' 2>/dev/null || echo "0")
+    FINDINGS_RESPONSE=$(curl -s "http://localhost:8080/api/v1/findings" 2>/dev/null)
+    FINDING_COUNT=$(echo "$FINDINGS_RESPONSE" | jq '.total // 0' 2>/dev/null || echo "0")
     if [ "$FINDING_COUNT" -gt 0 ]; then
-        print_status "Findings data validated ($FINDING_COUNT findings found)"
+        print_status "Findings API validated ($FINDING_COUNT findings found)"
     else
-        print_warning "No findings found - data seeding may have failed"
+        print_warning "Findings API shows 0 findings"
+        echo "Findings response: $FINDINGS_RESPONSE"
+    fi
+
+    # Check raw database counts (if we can connect)
+    echo ""
+    echo "🔍 Database validation:"
+    if command -v psql &> /dev/null; then
+        ASSET_DB_COUNT=$(psql "postgres://oem:password@localhost:5432/oem?sslmode=disable" -t -c "SELECT COUNT(*) FROM assets WHERE tenant_id = 1;" 2>/dev/null || echo "error")
+        FINDING_DB_COUNT=$(psql "postgres://oem:password@localhost:5432/oem?sslmode=disable" -t -c "SELECT COUNT(*) FROM finding_instances WHERE tenant_id = 1;" 2>/dev/null || echo "error")
+
+        if [ "$ASSET_DB_COUNT" != "error" ] && [ "$FINDING_DB_COUNT" != "error" ]; then
+            print_status "Database: $ASSET_DB_COUNT assets, $FINDING_DB_COUNT findings for tenant 1"
+        else
+            print_warning "Cannot connect to database for validation"
+        fi
+    else
+        print_warning "psql not available - skipping database validation"
     fi
 else
-    print_warning "jq not available for JSON parsing - skipping data validation"
+    print_warning "jq not available for JSON parsing - skipping detailed validation"
     print_warning "Install jq for better validation: apt-get install jq or brew install jq"
 fi
 
