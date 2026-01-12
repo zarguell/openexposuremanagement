@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -53,34 +54,23 @@ func NewDashboardRepository(db *sqlx.DB) *DashboardRepository {
 func (r *DashboardRepository) GetTenantData(ctx context.Context, tenantID int64) (*DashboardData, error) {
 	assets, err := r.getAssets(ctx, tenantID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get assets: %w", err)
 	}
 
 	findings, err := r.getOpenFindings(ctx, tenantID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get findings: %w", err)
 	}
 
 	intelSync, err := r.getIntelSyncStatus(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get intel sync: %w", err)
 	}
 
 	data := &DashboardData{
 		Assets:    *assets,
 		Findings:  *findings,
 		IntelSync: intelSync,
-	}
-
-	// Log telemetry for debugging
-	if assets.TotalAssets == 0 {
-		// This might indicate materialized view is not populated
-		// Log warning but don't fail
-	}
-
-	if findings.OpenCount == 0 {
-		// This might be expected if no findings exist
-		// But log for visibility
 	}
 
 	return data, nil
@@ -90,7 +80,12 @@ func (r *DashboardRepository) GetTenantData(ctx context.Context, tenantID int64)
 func (r *DashboardRepository) getAssets(ctx context.Context, tenantID int64) (*DashboardAssets, error) {
 	var assets DashboardAssets
 	err := r.db.GetContext(ctx, &assets,
-		"SELECT * FROM mv_dashboard_assets WHERE tenant_id = $1", tenantID)
+		`SELECT tenant_id, total_assets, active_assets, most_recent_asset_activity
+		 FROM mv_dashboard_assets WHERE tenant_id = $1
+		 UNION ALL
+		 SELECT $1, 0, 0, NULL
+		 WHERE NOT EXISTS (SELECT 1 FROM mv_dashboard_assets WHERE tenant_id = $1)
+		 LIMIT 1`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +96,12 @@ func (r *DashboardRepository) getAssets(ctx context.Context, tenantID int64) (*D
 func (r *DashboardRepository) getOpenFindings(ctx context.Context, tenantID int64) (*DashboardOpenFindings, error) {
 	var findings DashboardOpenFindings
 	err := r.db.GetContext(ctx, &findings,
-		"SELECT * FROM mv_dashboard_open_findings WHERE tenant_id = $1", tenantID)
+		`SELECT tenant_id, open_count, suppressed_count, critical_open_count, high_open_count, most_recent_finding
+		 FROM mv_dashboard_open_findings WHERE tenant_id = $1
+		 UNION ALL
+		 SELECT $1, 0, 0, 0, 0, NULL
+		 WHERE NOT EXISTS (SELECT 1 FROM mv_dashboard_open_findings WHERE tenant_id = $1)
+		 LIMIT 1`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (r *DashboardRepository) getIntelSyncStatus(ctx context.Context) (*IntelSyn
 	var status IntelSyncStatus
 	err := r.db.GetContext(ctx, &status, `
 		SELECT
-			MAX(finished_at) as last_sync_time,
+			COALESCE(MAX(finished_at), NULL) as last_sync_time,
 			CASE
 				WHEN MAX(started_at) > COALESCE(MAX(finished_at), '1970-01-01'::timestamptz) THEN 'running'
 				WHEN MAX(status) = 'failed' THEN 'error'
@@ -128,6 +128,10 @@ func (r *DashboardRepository) getIntelSyncStatus(ctx context.Context) (*IntelSyn
 			END as status,
 			MAX(CASE WHEN status = 'failed' THEN error_text END) as error_text
 		FROM intel_sync_runs
+		UNION ALL
+		SELECT NULL, 'ok', NULL
+		WHERE NOT EXISTS (SELECT 1 FROM intel_sync_runs)
+		LIMIT 1
 	`)
 	if err != nil {
 		return nil, err

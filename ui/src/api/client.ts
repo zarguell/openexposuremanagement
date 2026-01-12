@@ -1,9 +1,9 @@
 import { UserManager } from 'oidc-client-ts';
 
 // API base URL
-// Use relative URL by default so nginx proxy works correctly
+// Use /api prefix for nginx proxy in production
 // Can be overridden with VITE_API_BASE_URL for development
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
 // Create a user manager instance for API client
 const userManager = new UserManager({
