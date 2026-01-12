@@ -94,16 +94,16 @@ make seed
 
 #### Setup Issues
 - **Setup script fails**: Ensure Docker and Docker Compose are installed and running
-- **"migrate: command not found"**: The setup script will automatically install golang-migrate
-- **Port conflicts**: The setup script uses standard ports (80, 8080, 5432, 5050)
-
-#### Database Issues
-- **API fails with "relation 'tenants' does not exist"**: Re-run `./setup.sh` to ensure migrations complete
-- **Migration fails**: Check that PostgreSQL container is healthy: `docker compose ps`
+- **Port conflicts**: The setup script uses standard ports (80, 8080, 5432, 5050). Stop conflicting services or modify ports in docker-compose.yml
 
 #### Service Issues
 - **Services not starting**: Check logs with `docker compose logs`
-- **Demo script fails**: Ensure local PostgreSQL is running, or use Docker setup instead
+- **PgAdmin not accessible**: Wait a moment for initialization, then visit http://localhost:5050 (admin@oem.local / admin)
+- **Dashboard not loading**: Clear browser cache or try a hard refresh (Ctrl+F5)
+
+#### Development Issues
+- **Local demo script fails**: Ensure PostgreSQL is running locally, or use Docker setup instead
+- **Build failures**: Ensure Go 1.21+ and Node.js 20+ are installed for local development
 
 #### Common Commands
 ```bash
@@ -115,7 +115,7 @@ psql postgres://oem:password@localhost:5432/oem
 
 # Reset everything (CAUTION: destroys data)
 docker compose down -v
-docker volume rm openexposuremanagement_postgres-data
+docker volume rm openexposuremanagement_postgres-data openexposuremanagement_pgadmin-data
 ```
 
 ### Directory Structure
@@ -145,8 +145,8 @@ DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable" ~/go/b
 DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable" ~/go/bin/migrate -path db/migrations -database "$(DATABASE_URL)" create -ext sql -dir db/migrations <name>  # Create migration
 
 # Quick setup
-./setup.sh            # Full Docker setup with database and migrations
-./demo.sh             # Local development setup
+./setup.sh            # Full Docker setup with database, migrations, and all services
+./demo.sh             # Local development setup (requires local PostgreSQL)
 
 # Utilities
 make seed             # Seed sample data
