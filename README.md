@@ -17,22 +17,29 @@ Demonstrate a working platform that can:
 
 For quick demonstrations, you can run the application without authentication:
 
+#### Docker Compose (Recommended)
 ```bash
+# One command sets up everything automatically
+./setup.sh
+
+# Access points:
+# Frontend: http://localhost:80
+# Backend API: http://localhost:8080
+# PgAdmin: http://localhost:5050 (admin@oem.local / admin)
+```
+
+#### Local Development (For development only)
+```bash
+# Requires local PostgreSQL
 # Start both frontend and backend in demo mode
 ./demo.sh
 
 # Or manually:
-# Terminal 1 - Backend (with demo mode)
+# Terminal 1 - Backend (requires PostgreSQL running)
 cd api && DEMO_MODE=true go run ./cmd/server
 
 # Terminal 2 - Frontend
 cd ui && npm run dev
-
-# Or with Docker Compose:
-docker compose up -d
-# Frontend: http://localhost:80
-# Backend API: http://localhost:8080
-# PgAdmin: http://localhost:5050 (admin@oem.local / admin)
 ```
 
 **⚠️ Security Warning**: Demo mode disables authentication entirely. This is NOT secure for production use!
@@ -42,11 +49,12 @@ docker compose up -d
 For production use with proper authentication:
 
 ```bash
-# Build and start all services
+# Build and start all services (includes database setup)
 docker compose up --build
 
-# In another terminal, run database migrations
-make migrate-up
+# Run database migrations
+export DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable"
+~/go/bin/migrate -path db/migrations -database "$(DATABASE_URL)" up
 
 # Seed sample data (optional)
 make seed
@@ -77,10 +85,38 @@ make seed
 ### Prerequisites
 
 - Docker and Docker Compose
-- Go 1.21+
-- Node.js 20+
+- Go 1.21+ (for local development and migrations)
+- Node.js 20+ (for local development)
 - Make
-- golang-migrate (for database migrations): `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`
+- golang-migrate (automatically installed by setup.sh): `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`
+
+### Troubleshooting
+
+#### Setup Issues
+- **Setup script fails**: Ensure Docker and Docker Compose are installed and running
+- **"migrate: command not found"**: The setup script will automatically install golang-migrate
+- **Port conflicts**: The setup script uses standard ports (80, 8080, 5432, 5050)
+
+#### Database Issues
+- **API fails with "relation 'tenants' does not exist"**: Re-run `./setup.sh` to ensure migrations complete
+- **Migration fails**: Check that PostgreSQL container is healthy: `docker compose ps`
+
+#### Service Issues
+- **Services not starting**: Check logs with `docker compose logs`
+- **Demo script fails**: Ensure local PostgreSQL is running, or use Docker setup instead
+
+#### Common Commands
+```bash
+# Check database connectivity
+psql postgres://oem:password@localhost:5432/oem
+
+# View migration status
+~/go/bin/migrate -path db/migrations -database "postgres://oem:password@localhost:5432/oem?sslmode=disable" version
+
+# Reset everything (CAUTION: destroys data)
+docker compose down -v
+docker volume rm openexposuremanagement_postgres-data
+```
 
 ### Directory Structure
 
@@ -104,9 +140,13 @@ make test             # Run all tests (Go + UI)
 make lint             # Run linters
 
 # Database
-make migrate-up       # Apply all pending migrations
-make migrate-down     # Rollback last migration
-make migrate-create   # Create new migration (name=...)
+DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable" ~/go/bin/migrate -path db/migrations -database "$(DATABASE_URL)" up    # Apply migrations
+DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable" ~/go/bin/migrate -path db/migrations -database "$(DATABASE_URL)" down  # Rollback
+DATABASE_URL="postgres://oem:password@localhost:5432/oem?sslmode=disable" ~/go/bin/migrate -path db/migrations -database "$(DATABASE_URL)" create -ext sql -dir db/migrations <name>  # Create migration
+
+# Quick setup
+./setup.sh            # Full Docker setup with database and migrations
+./demo.sh             # Local development setup
 
 # Utilities
 make seed             # Seed sample data
