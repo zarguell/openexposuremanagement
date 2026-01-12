@@ -74,15 +74,19 @@ services:
       - test
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.2
     container_name: oem-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@oem.local
       PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
       - "5050:80"
     depends_on:
       - postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
     networks:
       - oem-network
     restart: unless-stopped
@@ -90,6 +94,7 @@ services:
 volumes:
   postgres-data:
   test-postgres-data:
+  pgadmin-data:
 
 networks:
   oem-network:
