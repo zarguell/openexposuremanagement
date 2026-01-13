@@ -354,8 +354,8 @@ func TestUpsertFindingInstance(t *testing.T) {
 		// Verify timestamps were updated correctly
 		instance, err = findingRepo.GetByTenantAssetAndDefinition(ctx, tenantID, assetID, definitionUID)
 		assert.NoError(t, err)
-		// First observed should move earlier
-		assert.Equal(t, secondTime.Add(-30*time.Minute), instance.FirstObservedAt)
+		// First observed should NOT move later - it stays at the earliest time seen
+		assert.Equal(t, firstTime.Add(-1*time.Hour), instance.FirstObservedAt)
 		// Last observed should move later
 		assert.Equal(t, secondTime, instance.LastObservedAt)
 	})

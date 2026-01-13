@@ -25,12 +25,15 @@ func TestUpsertAsset(t *testing.T) {
 	source := "tenable"
 
 	t.Run("creates new asset when no match exists", func(t *testing.T) {
+		// Use unique hostname and external ID to avoid conflicts with other tests
+		uniqueHost := "webserver01-create.example.com"
+		uniqueExtID := "i-create1234567890abcdef"
 
 		asset := VMAsset{
-			Hostname:    "webserver01.example.com",
+			Hostname:    uniqueHost,
 			IPAddresses: []string{"192.168.1.10"},
 			ExternalIDs: map[string]string{
-				"aws:instance_id": "i-1234567890abcdef0",
+				"aws:instance_id": uniqueExtID,
 			},
 		}
 
@@ -50,27 +53,29 @@ func TestUpsertAsset(t *testing.T) {
 			t.Fatal("expected asset to be returned, got nil")
 		}
 
-		if result.Asset.CanonicalName != "webserver01.example.com" {
-			t.Errorf("expected canonical name 'webserver01.example.com', got '%s'", result.Asset.CanonicalName)
+		if result.Asset.CanonicalName != uniqueHost {
+			t.Errorf("expected canonical name '%s', got '%s'", uniqueHost, result.Asset.CanonicalName)
 		}
 
 		// Verify identifiers were created
+		// Should have: hostname_norm, shortname_norm, ipv4, external_id
 		identifiers := getAssetIdentifiers(t, db, result.Asset.ID)
 
-		if len(identifiers) != 2 { // hostname + external ID
-			t.Errorf("expected 2 identifiers, got %d", len(identifiers))
+		if len(identifiers) != 4 { // hostname + shortname + IP + external ID
+			t.Errorf("expected 4 identifiers, got %d", len(identifiers))
 		}
 	})
 
 	t.Run("updates existing asset when matched by hostname", func(t *testing.T) {
-		// Setup: create existing asset
+		// Setup: create existing asset with unique external ID
+		uniqueExtID := "i-update1234567890abcdef"
 		existingAsset := createTestAsset(t, db, tenantID, "old-hostname.example.com", time.Now().Add(-24*time.Hour))
-		createTestIdentifier(t, db, tenantID, existingAsset.ID, "external_id:aws:instance_id", "i-1234567890abcdef0", source, time.Now().Add(-24*time.Hour))
+		createTestIdentifier(t, db, tenantID, existingAsset.ID, "external_id:aws:instance_id", uniqueExtID, source, time.Now().Add(-24*time.Hour))
 
 		asset := VMAsset{
 			Hostname: "new-hostname.example.com",
 			ExternalIDs: map[string]string{
-				"aws:instance_id": "i-1234567890abcdef0",
+				"aws:instance_id": uniqueExtID,
 			},
 		}
 
@@ -97,15 +102,17 @@ func TestUpsertAsset(t *testing.T) {
 	})
 
 	t.Run("adds new identifier to existing asset", func(t *testing.T) {
-		// Setup: existing asset with hostname only
-		existingAsset := createTestAsset(t, db, tenantID, "webserver01.example.com", time.Now().Add(-24*time.Hour))
-		createTestIdentifier(t, db, tenantID, existingAsset.ID, "hostname_norm", "webserver01.example.com", source, time.Now().Add(-24*time.Hour))
+		// Setup: existing asset with hostname only, use unique external ID
+		uniqueHost := "webserver01-add-id.example.com"
+		uniqueExtID := "i-addid1234567890abcdef"
+		existingAsset := createTestAsset(t, db, tenantID, uniqueHost, time.Now().Add(-24*time.Hour))
+		createTestIdentifier(t, db, tenantID, existingAsset.ID, "hostname_norm", uniqueHost, source, time.Now().Add(-24*time.Hour))
 
 		asset := VMAsset{
-			Hostname:    "webserver01.example.com",
+			Hostname:    uniqueHost,
 			IPAddresses: []string{"192.168.1.10"},
 			ExternalIDs: map[string]string{
-				"aws:instance_id": "i-1234567890abcdef0",
+				"aws:instance_id": uniqueExtID,
 			},
 		}
 
@@ -118,22 +125,23 @@ func TestUpsertAsset(t *testing.T) {
 		}
 
 		// Verify new identifiers were added
+		// Should have: original hostname + shortname + new IP + new external ID
 		identifiers := getAssetIdentifiers(t, db, result.Asset.ID)
 
-		// Should have original hostname + new IP + new external ID
-		if len(identifiers) != 3 {
-			t.Errorf("expected 3 identifiers, got %d", len(identifiers))
+		if len(identifiers) != 4 { // hostname + shortname + IP + external ID
+			t.Errorf("expected 4 identifiers, got %d", len(identifiers))
 		}
 	})
 
 	t.Run("updates identifier last_seen_at for existing identifiers", func(t *testing.T) {
 		// Setup: existing asset with old identifier
+		uniqueHost := "webserver01-update-time.example.com"
 		oldTime := time.Now().Add(-24 * time.Hour)
-		existingAsset := createTestAsset(t, db, tenantID, "webserver01.example.com", oldTime)
-		createTestIdentifier(t, db, tenantID, existingAsset.ID, "hostname_norm", "webserver01.example.com", source, oldTime)
+		existingAsset := createTestAsset(t, db, tenantID, uniqueHost, oldTime)
+		createTestIdentifier(t, db, tenantID, existingAsset.ID, "hostname_norm", uniqueHost, source, oldTime)
 
 		asset := VMAsset{
-			Hostname: "webserver01.example.com",
+			Hostname: uniqueHost,
 		}
 
 		// Execute
@@ -171,9 +179,10 @@ func TestUpsertAsset(t *testing.T) {
 
 	t.Run("handles multiple IP addresses", func(t *testing.T) {
 		// Setup: clean state
+		uniqueHost := "webserver01-multi-ip.example.com"
 
 		asset := VMAsset{
-			Hostname:    "webserver01.example.com",
+			Hostname:    uniqueHost,
 			IPAddresses: []string{"192.168.1.10", "192.168.1.11", "10.0.0.5"},
 		}
 
