@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -73,6 +74,10 @@ func (p *VMFindingsPayload) Validate() error {
 		return ValidationError{Field: "source", Message: "source is required"}
 	}
 
+	if p.ScannedAt.IsZero() {
+		return ValidationError{Field: "scanned_at", Message: "scanned_at is required"}
+	}
+
 	if len(p.Findings) == 0 {
 		return ValidationError{Field: "findings", Message: "at least one finding is required"}
 	}
@@ -111,6 +116,16 @@ func (f *VMFinding) Validate() error {
 		}
 	}
 
+	// Validate timestamps: first_found should not be after last_found
+	if !f.FirstFound.IsZero() && !f.LastFound.IsZero() {
+		if f.FirstFound.After(f.LastFound) {
+			return ValidationError{
+				Field:   "first_found",
+				Message: "first_found cannot be after last_found",
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -122,6 +137,17 @@ func validateAsset(asset *VMAsset) error {
 			Message: "asset must have at least hostname or external_id",
 		}
 	}
+
+	// Validate IP addresses if provided
+	for i, ip := range asset.IPAddresses {
+		if !IsValidIPv4(ip) {
+			return ValidationError{
+				Field:   "asset.ip_addresses",
+				Message: fmt.Sprintf("invalid IPv4 address at index %d: %s", i, ip),
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -138,6 +164,29 @@ func validateFindingDetails(details *VMFindingDetails) error {
 		return ValidationError{
 			Field:   "finding.title",
 			Message: "title is required",
+		}
+	}
+
+	// Validate severity
+	if details.Severity == "" {
+		return ValidationError{
+			Field:   "finding.severity",
+			Message: "severity is required",
+		}
+	}
+
+	validSeverities := map[string]bool{
+		"Critical": true,
+		"High":     true,
+		"Medium":   true,
+		"Low":      true,
+		"Info":     true,
+	}
+
+	if !validSeverities[details.Severity] {
+		return ValidationError{
+			Field:   "finding.severity",
+			Message: "severity must be one of: Critical, High, Medium, Low, Info",
 		}
 	}
 
