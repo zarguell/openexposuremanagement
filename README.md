@@ -108,15 +108,23 @@ make seed
 #### Common Commands
 ```bash
 # Check database connectivity
-psql postgres://oem:password@localhost:5432/oem
+docker exec -it oem-postgres psql -U oem -d oem
 
 # View migration status
-~/go/bin/migrate -path db/migrations -database "postgres://oem:password@localhost:5432/oem?sslmode=disable" version
+docker exec oem-postgres psql -U oem -d oem -c "\dt"
 
 # Reset everything (CAUTION: destroys data)
 docker compose down -v
 docker volume rm openexposuremanagement_postgres-data openexposuremanagement_pgadmin-data
+
+# Create backup
+./scripts/backup.sh
+
+# View service logs
+docker compose logs -f
 ```
+
+**For comprehensive operational guidance, see [docs/operations.md](docs/operations.md)**
 
 ### Directory Structure
 
@@ -153,6 +161,13 @@ make seed             # Seed sample data
 make demo-smoke       # Run end-to-end smoke test
 make help             # Show all available commands
 ```
+
+## Documentation
+
+- **[docs/architecture.md](docs/architecture.md)** - Detailed architecture, API endpoints, and data model
+- **[docs/operations.md](docs/operations.md)** - Complete operational guide for deployment, management, and troubleshooting
+- **[docs/tasks.md](docs/tasks.md)** - Implementation roadmap and task tracking
+- **[TESTING.md](TESTING.md)** - Testing guide and procedures
 
 ## Architecture
 
