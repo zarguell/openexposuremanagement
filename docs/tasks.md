@@ -157,7 +157,7 @@ Push ingestion endpoint that normalizes identifiers, matches/creates assets, ups
   - **Dependencies:** Define ingestion payload schema & validation
   - **Estimated tokens:** 1800
 
-- [ ] Task: Implement deterministic asset matching (rule engine + “why matched”)
+- [x] Task: Implement deterministic asset matching (rule engine + "why matched")
   - **Description:** Implement matching order: external IDs → hostname → optional shortname → conditional IP logic; produce match explanation for audit.
   - **Acceptance criteria:** Given test fixtures, matching selects expected asset; shortname matching off by default; IP-only never matches.
   - **Validation command:** `go test ./...`
