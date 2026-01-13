@@ -143,7 +143,7 @@ Implement API service skeleton, OIDC JWT validation, and RBAC gates for endpoint
 ## Milestone: VM ingestion pipeline (assets + findings)
 Push ingestion endpoint that normalizes identifiers, matches/creates assets, upserts findings/aliases, and computes effective status on write; reset context after this milestone.
 
-- [ ] Task: Define ingestion payload schema & validation
+- [x] Task: Define ingestion payload schema & validation
   - **Description:** Specify JSON contract for Tenable/Qualys-like findings, including `source`, asset identifiers, definition IDs, status, timestamps, evidence.
   - **Acceptance criteria:** Strict validation with clear errors; rejects unknown/invalid fields; includes unit tests with sample payloads.
   - **Validation command:** `go test ./...`
