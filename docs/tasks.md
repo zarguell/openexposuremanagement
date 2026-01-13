@@ -150,7 +150,7 @@ Push ingestion endpoint that normalizes identifiers, matches/creates assets, ups
   - **Dependencies:** Go API foundation → Implement API key auth for ingestion (scopes + bound source)
   - **Estimated tokens:** 2600
 
-- [ ] Task: Implement identifier normalization helpers
+- [x] Task: Implement identifier normalization helpers
   - **Description:** Implement `hostname_norm` and `shortname_norm` rules and ensure consistent use across ingestion and search.
   - **Acceptance criteria:** Normalization is deterministic (lowercase/trim/trailing dot removal); unit tests cover edge cases.
   - **Validation command:** `go test ./...`
