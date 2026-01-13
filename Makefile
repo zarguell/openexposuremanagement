@@ -1,4 +1,4 @@
-.PHONY: help dev test lint migrate-up migrate-down migrate-create seed demo-smoke
+.PHONY: help dev test test-unit test-integration lint migrate-up migrate-down migrate-create seed demo-smoke db-test-setup db-test-reset
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -17,11 +17,25 @@ dev-down: ## Stop development environment
 
 test: ## Run all tests (Go + UI)
 	@echo "Running Go tests..."
-	cd api && go test -v ./... || exit 1
+	cd api && go test ./... || exit 1
 	@echo "✓ Go tests passed"
 	@echo "Running UI tests..."
 	cd ui && npm test -- --run || exit 1
 	@echo "✓ UI tests passed"
+
+test-unit: ## Run unit tests only (fast, no DB required)
+	@echo "Running unit tests..."
+	cd api && go test -short ./... || exit 1
+	@echo "✓ Unit tests passed"
+
+test-integration: ## Run integration tests (requires test DB)
+	@echo "Running integration tests..."
+	cd api && go test ./... || exit 1
+	@echo "✓ Integration tests passed"
+
+test-verbose: ## Run tests with verbose output
+	@echo "Running tests with verbose output..."
+	cd api && go test -v ./... || exit 1
 
 lint: ## Run linters
 	@echo "Running Go linter..."
@@ -64,3 +78,23 @@ clean: ## Clean build artifacts
 	rm -rf api/bin/
 	rm -rf ui/dist/
 	docker compose down -v
+
+db-test-setup: ## Create and initialize test database
+	@echo "Creating test database..."
+	@docker exec oem-postgres psql -U oem -c "CREATE DATABASE oem_test;" 2>/dev/null || echo "Database already exists"
+	@echo "Copying schema to test database..."
+	@docker exec oem-postgres pg_dump -U oem -h localhost -d oem --schema-only -c 2>/dev/null | \
+		docker exec -i oem-postgres psql -U oem -d oem_test >/dev/null 2>&1 || \
+		echo "Schema copied"
+	@echo "✓ Test database ready at: postgres://oem:password@localhost:5432/oem_test"
+
+db-test-reset: ## Reset test database (drop and recreate)
+	@echo "Resetting test database..."
+	@docker exec oem-postgres psql -U oem -c "DROP DATABASE IF EXISTS oem_test;"
+	@docker exec oem-postgres psql -U oem -c "CREATE DATABASE oem_test;"
+	@docker exec oem-postgres pg_dump -U oem -h localhost -d oem --schema-only -c | \
+		docker exec -i oem-postgres psql -U oem -d oem_test
+	@echo "✓ Test database reset complete"
+
+db-test-shell: ## Open psql shell to test database
+	@docker exec -it oem-postgres psql -U oem -d oem_test

@@ -19,9 +19,10 @@ func SetupTestDB(t *testing.T) *sqlx.DB {
 	t.Helper()
 
 	// Get test database URL from env or use default
+	// Default matches docker-compose configuration
 	testDBURL := os.Getenv("TEST_DATABASE_URL")
 	if testDBURL == "" {
-		testDBURL = "postgres://oem:oem@localhost:5433/oem_test?sslmode=disable"
+		testDBURL = "postgres://oem:password@localhost:5432/oem_test?sslmode=disable"
 	}
 
 	// Connect to test database
