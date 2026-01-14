@@ -4,7 +4,10 @@ import { DEFAULT_DASHBOARD } from '../config/dashboard';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 function Dashboard() {
-  const { results, isLoading, isError, widgets } = useDashboardQueries(DEFAULT_DASHBOARD);
+  const { results, isLoading, isError, widgets, errors } = useDashboardQueries(DEFAULT_DASHBOARD);
+
+  // Don't block the entire page - show warning banner instead
+  const showErrorBanner = isError && errors && errors.length > 0;
 
   if (isLoading) {
     return (
@@ -14,26 +17,35 @@ function Dashboard() {
     );
   }
 
-  if (isError) {
-    return (
-      <div style={{ padding: '1.5rem 1rem' }}>
+  const renderMetricWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    const hasError = !!result.error;
+
+    // If there's an error, show error state
+    if (hasError) {
+      return (
         <div style={{
           backgroundColor: '#fef2f2',
-          border: '1px solid #fecaca',
           borderRadius: '0.5rem',
-          padding: '1rem',
-          color: '#dc2626'
+          padding: '1.5rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          height: '100%',
+          border: '1px solid #fecaca',
         }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-            Error loading dashboard
-          </h3>
-          <p>Some dashboard widgets failed to load. Please try refreshing the page.</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#991b1b', margin: 0 }}>
+              {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
+              {widget.title}
+            </h3>
+            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem' }}>⚠️</span>
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#991b1b', fontStyle: 'italic' }}>
+            Unable to load data
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  const renderMetricWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    // Normal rendering when no error
     const count = widget.aggregation === 'count'
       ? result.meta.total_rows
       : (result.data?.[0]?.[widget.displayField || 'count'] || result.meta.total_rows);
@@ -64,9 +76,6 @@ function Dashboard() {
             {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
             {widget.title}
           </h3>
-          {result.error && (
-            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem' }}>⚠️</span>
-          )}
         </div>
         <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: widget.color || '#3b82f6' }}>
           {count.toLocaleString()}
@@ -81,6 +90,31 @@ function Dashboard() {
   };
 
   const renderListWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    const hasError = !!result.error;
+
+    if (hasError) {
+      return (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          border: '1px solid #fecaca',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#991b1b', margin: 0 }}>
+              {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
+              {widget.title}
+            </h3>
+            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem', marginLeft: '0.5rem' }}>⚠️</span>
+          </div>
+          <p style={{ fontSize: '0.875rem', color: '#991b1b', fontStyle: 'italic' }}>
+            Unable to load data
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div style={{
         backgroundColor: 'white',
@@ -93,9 +127,6 @@ function Dashboard() {
             {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
             {widget.title}
           </h3>
-          {result.error && (
-            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem', marginLeft: '0.5rem' }}>⚠️</span>
-          )}
         </div>
         {result.data && result.data.length > 0 ? (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -185,6 +216,56 @@ function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Warning Banner for Errors */}
+      {showErrorBanner && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          border: '1px solid #fcd34d',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '2rem',
+          color: '#92400e'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', marginTop: 0 }}>
+                Some Dashboard Widgets Failed to Load
+              </h3>
+              {errors.some(e => e.errorType === 'database') && (
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <strong>Database Issue:</strong> The database schema needs to be initialized. Run <code style={{ backgroundColor: '#fffbeb', padding: '0.125rem 0.375rem', borderRadius: '0.25rem', fontSize: '0.75rem' }}>make migrate-up</code> to create the required tables.
+                </p>
+              )}
+              {errors.some(e => e.errorType === 'validation') && (
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <strong>Validation Issue:</strong> Some queries have invalid filters or fields.
+                </p>
+              )}
+              {errors.some(e => e.errorType === 'connection') && (
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <strong>Connection Issue:</strong> Unable to reach the API server. Please check if the backend is running.
+                </p>
+              )}
+              {errors.every(e => e.errorType === 'unknown') && (
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                  <details>
+                    <summary style={{ cursor: 'pointer', fontWeight: '500' }}>View details ({errors.length} errors)</summary>
+                    <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem', fontSize: '0.875rem' }}>
+                      {errors.slice(0, 5).map((err, idx) => (
+                        <li key={idx}>
+                          <strong>{err.widget}:</strong> {err.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assets Section */}
       <div style={{ marginBottom: '2rem' }}>
