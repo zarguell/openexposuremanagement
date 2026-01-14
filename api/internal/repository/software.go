@@ -34,6 +34,13 @@ type AssetSoftware struct {
 	LastSeenAt  string `db:"last_seen_at" json:"last_seen_at"`
 	CreatedAt   string `db:"created_at" json:"created_at"`
 	UpdatedAt   string `db:"updated_at" json:"updated_at"`
+
+	CPEString      string `db:"cpe_string" json:"cpe_string,omitempty"`
+	Vendor         string `db:"vendor" json:"vendor,omitempty"`
+	ProductName    string `db:"product_name" json:"product_name,omitempty"`
+	Version        string `db:"version" json:"version,omitempty"`
+	Edition        string `db:"edition" json:"edition,omitempty"`
+	TitleFormatted string `db:"title_formatted" json:"title_formatted,omitempty"`
 }
 
 // SoftwareSummary represents a software product with installation count
@@ -49,13 +56,13 @@ type SoftwareSummary struct {
 
 // SoftwareListParams represents parameters for listing software
 type SoftwareListParams struct {
-	TenantID  int64  `json:"-"` // Tenant ID (required)
-	Vendor    string `json:"vendor,omitempty"`
-	Product   string `json:"product,omitempty"`
-	Version   string `json:"version,omitempty"`
-	CPE       string `json:"cpe,omitempty"`
-	Limit     int    `json:"limit,omitempty"`
-	Offset    int    `json:"offset,omitempty"`
+	TenantID int64  `json:"-"` // Tenant ID (required)
+	Vendor   string `json:"vendor,omitempty"`
+	Product  string `json:"product,omitempty"`
+	Version  string `json:"version,omitempty"`
+	CPE      string `json:"cpe,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+	Offset   int    `json:"offset,omitempty"`
 }
 
 // SoftwareRepository handles software data access
@@ -276,11 +283,11 @@ func (r *SoftwareRepository) GetSoftwareDetails(ctx context.Context, tenantID, s
 
 	// Get related findings summary
 	var findingSummary struct {
-		TotalFindings    int64 `db:"total_findings"`
-		CriticalCount    int64 `db:"critical_count"`
-		HighCount        int64 `db:"high_count"`
-		MediumCount      int64 `db:"medium_count"`
-		LowCount         int64 `db:"low_count"`
+		TotalFindings int64 `db:"total_findings"`
+		CriticalCount int64 `db:"critical_count"`
+		HighCount     int64 `db:"high_count"`
+		MediumCount   int64 `db:"medium_count"`
+		LowCount      int64 `db:"low_count"`
 	}
 
 	err = r.db.GetContext(ctx, &findingSummary, `
