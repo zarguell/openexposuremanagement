@@ -69,4 +69,14 @@ func TestValidator(t *testing.T) {
 			t.Error("expected error for invalid entity type")
 		}
 	})
+
+	t.Run("nil query returns error", func(t *testing.T) {
+		err := v.Validate("findings", nil)
+		if err == nil {
+			t.Error("expected error for nil query")
+		}
+		if err.Error() != "query cannot be nil" {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
 }
