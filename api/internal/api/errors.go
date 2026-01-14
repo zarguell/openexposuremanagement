@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // QueryError represents a structured error response
@@ -16,14 +18,19 @@ type QueryError struct {
 }
 
 // WriteErrorResponse writes a structured error response
-func WriteErrorResponse(w http.ResponseWriter, err *QueryError, requestID string) {
+func WriteErrorResponse(w http.ResponseWriter, err *QueryError, requestID string, statusCode int) {
 	err.RequestID = requestID
 	err.Timestamp = time.Now().Format(time.RFC3339)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(statusCode)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if encErr := json.NewEncoder(w).Encode(map[string]interface{}{
 		"error": err,
-	})
+	}); encErr != nil {
+		log.Error().Err(encErr).
+			Str("request_id", requestID).
+			Str("error_code", err.Code).
+			Msg("Failed to encode error response")
+	}
 }

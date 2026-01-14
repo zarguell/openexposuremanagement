@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func TestErrorResponse(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.WriteErrorResponse(w, err, "abc-123")
+		api.WriteErrorResponse(w, err, "abc-123", http.StatusBadRequest)
 
 		if w.Code != 400 {
 			t.Errorf("got status %d, want 400", w.Code)
@@ -68,9 +69,9 @@ func TestErrorResponse(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.WriteErrorResponse(w, err, "xyz-789")
+		api.WriteErrorResponse(w, err, "xyz-789", http.StatusNotFound)
 
-		if w.Code != 400 {
+		if w.Code != 404 {
 			t.Errorf("got status %d, want 400", w.Code)
 		}
 
@@ -110,7 +111,7 @@ func TestErrorResponse(t *testing.T) {
 		}
 
 		w := httptest.NewRecorder()
-		api.WriteErrorResponse(w, err, "req-456")
+		api.WriteErrorResponse(w, err, "req-456", http.StatusInternalServerError)
 
 		// Verify body is valid JSON
 		body := w.Body.String()
@@ -125,6 +126,35 @@ func TestErrorResponse(t *testing.T) {
 
 		if _, ok := resp["error"]; !ok {
 			t.Error("response missing 'error' key")
+		}
+	})
+
+	t.Run("configurable status codes", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			statusCode int
+			errCode    string
+		}{
+			{"bad request", http.StatusBadRequest, "BAD_REQUEST"},
+			{"not found", http.StatusNotFound, "NOT_FOUND"},
+			{"internal server error", http.StatusInternalServerError, "INTERNAL_ERROR"},
+			{"unauthorized", http.StatusUnauthorized, "UNAUTHORIZED"},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := &api.QueryError{
+					Code:    tt.errCode,
+					Message: "Test error message",
+				}
+
+				w := httptest.NewRecorder()
+				api.WriteErrorResponse(w, err, "test-req-id", tt.statusCode)
+
+				if w.Code != tt.statusCode {
+					t.Errorf("got status %d, want %d", w.Code, tt.statusCode)
+				}
+			})
 		}
 	})
 }
