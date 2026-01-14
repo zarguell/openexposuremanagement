@@ -60,7 +60,7 @@ func (s *Server) registerRoutes() {
 
 	// Software endpoints
 	apiV1.HandleFunc("/software", handlers.RequireAuth(handlers.GetSoftwareCatalog(s.db)))
-	apiV1.HandleFunc("/software/", handlers.RequireAuth(handlers.GetSoftwareByID(s.db)))
+	apiV1.HandleFunc("/software/{id}", handlers.RequireAuth(handlers.GetSoftwareByID(s.db)))
 
 	// Query endpoints (require auth)
 	var queryExecutor query.QueryExecutor = query.NewExecutor(s.db)

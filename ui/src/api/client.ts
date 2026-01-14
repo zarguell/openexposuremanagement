@@ -213,7 +213,8 @@ export const apiClient = {
     if (!response.ok) {
       throw new Error(`Failed to fetch software: ${response.statusText}`);
     }
-    return response.json();
+    const json = await response.json();
+    return json.data || json;
   },
 
   async getSoftwareForAsset(assetId: number) {
@@ -221,6 +222,7 @@ export const apiClient = {
     if (!response.ok) {
       throw new Error(`Failed to fetch software for asset: ${response.statusText}`);
     }
-    return response.json();
+    const json = await response.json();
+    return json.data || json;
   },
 };
