@@ -1,0 +1,85 @@
+.query-widget {
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.query-widget.error {
+  border-color: var(--error-color, #ef4444);
+}
+
+.widget-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-tertiary, #f8fafc);
+}
+
+.widget-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.toggle-filters-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-secondary, #64748b);
+  transition: all 0.2s;
+}
+
+.toggle-filters-btn:hover {
+  background: var(--bg-hover, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+
+.toggle-filters-btn svg {
+  transition: transform 0.2s;
+}
+
+.toggle-filters-btn svg.rotated {
+  transform: rotate(180deg);
+}
+
+.widget-filters {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-secondary, #fff);
+}
+
+.widget-content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.widget-error-content {
+  padding: 2rem;
+  text-align: center;
+  color: var(--error-color, #ef4444);
+}
+
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.retry-btn:hover {
+  background: var(--primary-hover, #2563eb);
+}

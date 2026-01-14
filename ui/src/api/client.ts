@@ -171,4 +171,16 @@ export const apiClient = {
     }
     return response.json();
   },
+
+  // Query Framework API
+  async queryExecute(entity: 'findings' | 'assets', query: any) {
+    const response = await authenticatedFetch(`/v1/query/${entity}`, {
+      method: 'POST',
+      body: JSON.stringify(query),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to execute query: ${response.statusText}`);
+    }
+    return response.json();
+  },
 };

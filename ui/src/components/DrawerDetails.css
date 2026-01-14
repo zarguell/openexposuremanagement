@@ -1,0 +1,91 @@
+/* FindingDrawer and AssetDrawer specific styles */
+
+.drawer-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.finding-details,
+.asset-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.asset-details .detail-row {
+  grid-template-columns: 150px 1fr;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.detail-value {
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detail-value a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.detail-value a:hover {
+  text-decoration: underline;
+}
+
+/* EPSS Badge */
+.epss-badge {
+  margin-left: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.epss-high {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* KEV Badge */
+.kev-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background-color: #fef3c7;
+  color: #d97706;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Findings Count Badge */
+.findings-count {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.findings-count.has-findings {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.findings-count:not(.has-findings) {
+  background-color: #d1fae5;
+  color: #059669;
+}
