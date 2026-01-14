@@ -14,72 +14,44 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// QueryExecutor interface for testing and dependency injection
-type QueryExecutor interface {
+// ExecutorInterface defines the query executor interface (matches spec)
+type ExecutorInterface interface {
 	Execute(ctx context.Context, tenantID string, entityType string, q *query.Query) (*query.QueryResult, error)
 }
 
 // QueryHandler handles query-related endpoints
 type QueryHandler struct {
-	executor QueryExecutor
+	executor ExecutorInterface
 }
 
 // NewQueryHandler creates a new QueryHandler
-func NewQueryHandler(executor QueryExecutor) *QueryHandler {
+func NewQueryHandler(executor ExecutorInterface) *QueryHandler {
 	return &QueryHandler{executor: executor}
 }
 
-// ServeHTTP dispatches requests to the appropriate handler
-func (h *QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestID := r.Header.Get("X-Request-ID")
-	if requestID == "" {
-		requestID = "unknown"
+// getRequestID extracts request ID from context (set by middleware)
+func getRequestID(r *http.Request) string {
+	reqID := r.Context().Value("request_id")
+	if reqID == nil {
+		return "unknown"
 	}
-
-	path := r.URL.Path
-
-	// Route to appropriate handler
-	switch {
-	case path == "/api/v1/queries/execute" && r.Method == http.MethodPost:
-		h.handleExecute(w, r, requestID)
-	case path == "/api/v1/queries/saved":
-		switch r.Method {
-		case http.MethodGet:
-			h.handleListSaved(w, r, requestID)
-		case http.MethodPost:
-			h.handleCreateSaved(w, r, requestID)
-		default:
-			h.writeMethodNotAllowed(w, requestID)
-		}
-	case strings.HasPrefix(path, "/api/v1/queries/saved/"):
-		// Extract ID from path
-		idStr := strings.TrimPrefix(path, "/api/v1/queries/saved/")
-		if idStr == "" {
-			api.WriteErrorResponse(w, &api.QueryError{
-				Code:    "INVALID_PATH",
-				Message: "Invalid saved query path",
-			}, requestID, http.StatusBadRequest)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			h.handleGetSaved(w, r, requestID, idStr)
-		case http.MethodDelete:
-			h.handleDeleteSaved(w, r, requestID, idStr)
-		default:
-			h.writeMethodNotAllowed(w, requestID)
-		}
-	default:
-		api.WriteErrorResponse(w, &api.QueryError{
-			Code:    "NOT_FOUND",
-			Message: "Query endpoint not found",
-		}, requestID, http.StatusNotFound)
-	}
+	return reqID.(string)
 }
 
-// handleExecute executes a query against the specified entity type
-func (h *QueryHandler) handleExecute(w http.ResponseWriter, r *http.Request, requestID string) {
+// QueryFindings handles POST /api/v1/query/findings
+func (h *QueryHandler) QueryFindings(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+	h.executeQuery(w, r, requestID, "findings")
+}
+
+// QueryAssets handles POST /api/v1/query/assets
+func (h *QueryHandler) QueryAssets(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+	h.executeQuery(w, r, requestID, "assets")
+}
+
+// executeQuery executes a query against the specified entity type
+func (h *QueryHandler) executeQuery(w http.ResponseWriter, r *http.Request, requestID string, entityType string) {
 	// Get user context from auth middleware
 	userCtx := r.Context().Value(auth.UserContextKey)
 	if userCtx == nil {
@@ -110,13 +82,9 @@ func (h *QueryHandler) handleExecute(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Parse query request
-	var queryReq struct {
-		EntityType string        `json:"entity_type"`
-		Query      *query.Query  `json:"query"`
-	}
-
-	if err := json.Unmarshal(body, &queryReq); err != nil {
+	// Parse query (no entity_type field in spec - it's determined by endpoint)
+	var q query.Query
+	if err := json.Unmarshal(body, &q); err != nil {
 		api.WriteErrorResponse(w, &api.QueryError{
 			Code:    "INVALID_JSON",
 			Message: "Invalid JSON in request body",
@@ -125,24 +93,11 @@ func (h *QueryHandler) handleExecute(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Validate entity_type
-	if queryReq.EntityType == "" {
-		queryReq.EntityType = "findings" // default
-	}
-
-	if queryReq.EntityType != "assets" && queryReq.EntityType != "findings" {
-		api.WriteErrorResponse(w, &api.QueryError{
-			Code:    "INVALID_ENTITY_TYPE",
-			Message: "entity_type must be 'assets' or 'findings'",
-		}, requestID, http.StatusBadRequest)
-		return
-	}
-
 	// Validate query is present
-	if queryReq.Query == nil {
+	if len(q.Filters) == 0 {
 		api.WriteErrorResponse(w, &api.QueryError{
-			Code:    "MISSING_QUERY",
-			Message: "query field is required",
+			Code:    "MISSING_FILTERS",
+			Message: "Query must have at least one filter",
 		}, requestID, http.StatusBadRequest)
 		return
 	}
@@ -151,12 +106,12 @@ func (h *QueryHandler) handleExecute(w http.ResponseWriter, r *http.Request, req
 	tenantID := strconv.FormatInt(user.TenantID, 10)
 
 	// Execute query
-	result, err := h.executor.Execute(r.Context(), tenantID, queryReq.EntityType, queryReq.Query)
+	result, err := h.executor.Execute(r.Context(), tenantID, entityType, &q)
 	if err != nil {
 		log.Error().Err(err).
 			Str("request_id", requestID).
 			Str("tenant_id", tenantID).
-			Str("entity_type", queryReq.EntityType).
+			Str("entity_type", entityType).
 			Msg("query execution failed")
 
 		// Check if it's a validation error
@@ -191,42 +146,38 @@ func (h *QueryHandler) handleExecute(w http.ResponseWriter, r *http.Request, req
 	}
 }
 
-// handleListSaved lists saved queries (stub for next task)
-func (h *QueryHandler) handleListSaved(w http.ResponseWriter, r *http.Request, requestID string) {
+// ListSavedQueries handles GET /api/v1/query/saved (stub for next task)
+func (h *QueryHandler) ListSavedQueries(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
 	api.WriteErrorResponse(w, &api.QueryError{
 		Code:    "NOT_IMPLEMENTED",
 		Message: "Saved query listing not yet implemented",
 	}, requestID, http.StatusNotImplemented)
 }
 
-// handleCreateSaved creates a new saved query (stub for next task)
-func (h *QueryHandler) handleCreateSaved(w http.ResponseWriter, r *http.Request, requestID string) {
+// CreateSavedQuery handles POST /api/v1/query/saved (stub for next task)
+func (h *QueryHandler) CreateSavedQuery(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
 	api.WriteErrorResponse(w, &api.QueryError{
 		Code:    "NOT_IMPLEMENTED",
 		Message: "Saved query creation not yet implemented",
 	}, requestID, http.StatusNotImplemented)
 }
 
-// handleGetSaved retrieves a saved query by ID (stub for next task)
-func (h *QueryHandler) handleGetSaved(w http.ResponseWriter, r *http.Request, requestID string, id string) {
+// GetSavedQuery handles GET /api/v1/query/saved/{name} (stub for next task)
+func (h *QueryHandler) GetSavedQuery(w http.ResponseWriter, r *http.Request, name string) {
+	requestID := getRequestID(r)
 	api.WriteErrorResponse(w, &api.QueryError{
 		Code:    "NOT_IMPLEMENTED",
 		Message: "Saved query retrieval not yet implemented",
 	}, requestID, http.StatusNotImplemented)
 }
 
-// handleDeleteSaved deletes a saved query by ID (stub for next task)
-func (h *QueryHandler) handleDeleteSaved(w http.ResponseWriter, r *http.Request, requestID string, id string) {
+// DeleteSavedQuery handles DELETE /api/v1/query/saved/{name} (stub for next task)
+func (h *QueryHandler) DeleteSavedQuery(w http.ResponseWriter, r *http.Request, name string) {
+	requestID := getRequestID(r)
 	api.WriteErrorResponse(w, &api.QueryError{
 		Code:    "NOT_IMPLEMENTED",
 		Message: "Saved query deletion not yet implemented",
 	}, requestID, http.StatusNotImplemented)
-}
-
-// writeMethodNotAllowed writes a 405 Method Not Allowed error
-func (h *QueryHandler) writeMethodNotAllowed(w http.ResponseWriter, requestID string) {
-	api.WriteErrorResponse(w, &api.QueryError{
-		Code:    "METHOD_NOT_ALLOWED",
-		Message: "Method not allowed",
-	}, requestID, http.StatusMethodNotAllowed)
 }

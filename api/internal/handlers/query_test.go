@@ -13,7 +13,7 @@ import (
 	"github.com/openexposuremanagement/oem/internal/services/query"
 )
 
-// mockQueryExecutor is a mock implementation of QueryExecutor for testing
+// mockQueryExecutor is a mock implementation of ExecutorInterface for testing
 type mockQueryExecutor struct {
 	result *query.QueryResult
 	err    error
@@ -26,8 +26,8 @@ func (m *mockQueryExecutor) Execute(ctx context.Context, tenantID string, entity
 	return m.result, nil
 }
 
-// TestPostQueriesExecute_Success tests successful query execution
-func TestPostQueriesExecute_Success(t *testing.T) {
+// TestQueryAssets_Success tests successful asset query execution
+func TestQueryAssets_Success(t *testing.T) {
 	t.Run("valid query returns results", func(t *testing.T) {
 		executor := &mockQueryExecutor{
 			result: &query.QueryResult{
@@ -45,21 +45,17 @@ func TestPostQueriesExecute_Success(t *testing.T) {
 		handler := NewQueryHandler(executor)
 
 		body := `{
-			"entity_type": "assets",
-			"query": {
-				"filters": [{"field": "is_active", "operator": "eq", "value": true}]
-			}
+			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
 		}`
 
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-123")
 
 		// Add user context (simulating auth middleware)
-		req = setQueryUserContext(req, 1)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-123")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("got status %d, want 200", w.Code)
@@ -90,19 +86,79 @@ func TestPostQueriesExecute_Success(t *testing.T) {
 	})
 }
 
-func TestPostQueriesExecute_Errors(t *testing.T) {
+// TestQueryFindings_Success tests successful findings query execution
+func TestQueryFindings_Success(t *testing.T) {
+	t.Run("valid query returns results", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{
+					{
+						"id":        int64(1),
+						"severity":  "critical",
+						"cve":       "CVE-2024-1234",
+						"epss_score": 0.95,
+					},
+				},
+				Meta: &query.QueryMeta{
+					TotalRows:       142,
+					ExecutionTimeMs: 45,
+					HasMore:         true,
+				},
+			},
+		}
+
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"filters": [
+				{"field": "severity", "operator": "in", "value": ["critical", "high"]}
+			],
+			"limit": 50
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/findings", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-findings")
+
+		w := httptest.NewRecorder()
+		handler.QueryFindings(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		meta, ok := resp["meta"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected meta field in response")
+		}
+
+		if meta["total_rows"] != float64(142) {
+			t.Errorf("got total_rows %v, want 142", meta["total_rows"])
+		}
+
+		if meta["has_more"] != true {
+			t.Errorf("got has_more %v, want true", meta["has_more"])
+		}
+	})
+}
+
+func TestQueryAssets_Errors(t *testing.T) {
 	t.Run("invalid JSON returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
 		handler := NewQueryHandler(executor)
 
 		body := `{invalid json`
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-456")
-		req = setQueryUserContext(req, 1) // Add user context first
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-456")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("got status %d, want 400", w.Code)
@@ -130,19 +186,15 @@ func TestPostQueriesExecute_Errors(t *testing.T) {
 		handler := NewQueryHandler(executor)
 
 		body := `{
-			"entity_type": "assets",
-			"query": {
-				"filters": [{"field": "severity", "operator": "eq", "value": "critical"}]
-			}
+			"filters": [{"field": "severity", "operator": "eq", "value": "critical"}]
 		}`
 
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-789")
-		req = setQueryUserContext(req, 1)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-789")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusUnprocessableEntity {
 			t.Errorf("got status %d, want 422", w.Code)
@@ -168,42 +220,32 @@ func TestPostQueriesExecute_Errors(t *testing.T) {
 		handler := NewQueryHandler(executor)
 
 		body := `{
-			"entity_type": "assets",
-			"query": {
-				"filters": [{"field": "is_active", "operator": "eq", "value": true}]
-			}
+			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
 		}`
 
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-no-user")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusUnauthorized {
 			t.Errorf("got status %d, want 401", w.Code)
 		}
 	})
 
-	t.Run("invalid entity_type returns 400", func(t *testing.T) {
+	t.Run("missing filters returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
 		handler := NewQueryHandler(executor)
 
-		body := `{
-			"entity_type": "invalid_type",
-			"query": {
-				"filters": [{"field": "is_active", "operator": "eq", "value": true}]
-			}
-		}`
+		body := `{"limit": 50}`
 
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-bad-type")
-		req = setQueryUserContext(req, 1)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-no-filters")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("got status %d, want 400", w.Code)
@@ -219,230 +261,8 @@ func TestPostQueriesExecute_Errors(t *testing.T) {
 			t.Fatal("expected error field in response")
 		}
 
-		if errResp["code"] != "INVALID_ENTITY_TYPE" {
-			t.Errorf("got error code %v, want INVALID_ENTITY_TYPE", errResp["code"])
-		}
-	})
-
-	t.Run("defaults entity_type to findings", func(t *testing.T) {
-		executor := &mockQueryExecutor{
-			result: &query.QueryResult{
-				Data: []map[string]interface{}{},
-				Meta: &query.QueryMeta{
-					TotalRows:       0,
-					ExecutionTimeMs: 2,
-					HasMore:         false,
-				},
-			},
-		}
-		handler := NewQueryHandler(executor)
-
-		body := `{
-			"query": {
-				"filters": [{"field": "severity", "operator": "eq", "value": "critical"}]
-			}
-		}`
-
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-default")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("got status %d, want 200", w.Code)
-		}
-	})
-}
-
-func TestGetQueriesSaved(t *testing.T) {
-	t.Run("returns not implemented yet", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("GET", "/api/v1/queries/saved", nil)
-		req.Header.Set("X-Request-ID", "test-req-saved-list")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotImplemented {
-			t.Errorf("got status %d, want 501", w.Code)
-		}
-	})
-}
-
-func TestPostQueriesSaved(t *testing.T) {
-	t.Run("returns not implemented yet", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		body := `{"name": "test", "query": {"filters": []}}`
-		req := httptest.NewRequest("POST", "/api/v1/queries/saved", bytes.NewReader([]byte(body)))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-saved-create")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotImplemented {
-			t.Errorf("got status %d, want 501", w.Code)
-		}
-	})
-}
-
-func TestGetQueriesSavedByID(t *testing.T) {
-	t.Run("returns not implemented yet", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("GET", "/api/v1/queries/saved/123", nil)
-		req.Header.Set("X-Request-ID", "test-req-saved-get")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotImplemented {
-			t.Errorf("got status %d, want 501", w.Code)
-		}
-	})
-}
-
-func TestDeleteQueriesSaved(t *testing.T) {
-	t.Run("returns not implemented yet", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("DELETE", "/api/v1/queries/saved/123", nil)
-		req.Header.Set("X-Request-ID", "test-req-saved-delete")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotImplemented {
-			t.Errorf("got status %d, want 501", w.Code)
-		}
-	})
-}
-
-func TestQueryHandler_MethodNotAllowed(t *testing.T) {
-	t.Run("rejects unsupported methods", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("PUT", "/api/v1/queries/saved", nil)
-		req.Header.Set("X-Request-ID", "test-req-method")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusMethodNotAllowed {
-			t.Errorf("got status %d, want 405", w.Code)
-		}
-	})
-
-	t.Run("rejects unsupported method on saved query detail", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("POST", "/api/v1/queries/saved/123", nil)
-		req.Header.Set("X-Request-ID", "test-req-method-detail")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusMethodNotAllowed {
-			t.Errorf("got status %d, want 405", w.Code)
-		}
-	})
-}
-
-func TestQueryHandler_Routing(t *testing.T) {
-	t.Run("returns 404 for unknown path", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("GET", "/api/v1/queries/unknown", nil)
-		req.Header.Set("X-Request-ID", "test-req-404")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("got status %d, want 404", w.Code)
-		}
-	})
-
-	t.Run("returns 400 for invalid saved query path", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		req := httptest.NewRequest("GET", "/api/v1/queries/saved/", nil)
-		req.Header.Set("X-Request-ID", "test-req-bad-path")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want 400", w.Code)
-		}
-
-		var resp map[string]interface{}
-		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-
-		errResp, ok := resp["error"].(map[string]interface{})
-		if !ok {
-			t.Fatal("expected error field in response")
-		}
-
-		if errResp["code"] != "INVALID_PATH" {
-			t.Errorf("got error code %v, want INVALID_PATH", errResp["code"])
-		}
-	})
-}
-
-func TestPostQueriesExecute_AdditionalErrors(t *testing.T) {
-	t.Run("returns 400 when query is missing", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
-
-		body := `{"entity_type": "assets"}`
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-no-query")
-		req = setQueryUserContext(req, 1)
-
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want 400", w.Code)
-		}
-
-		var resp map[string]interface{}
-		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-
-		errResp, ok := resp["error"].(map[string]interface{})
-		if !ok {
-			t.Fatal("expected error field in response")
-		}
-
-		if errResp["code"] != "MISSING_QUERY" {
-			t.Errorf("got error code %v, want MISSING_QUERY", errResp["code"])
+		if errResp["code"] != "MISSING_FILTERS" {
+			t.Errorf("got error code %v, want MISSING_FILTERS", errResp["code"])
 		}
 	})
 
@@ -453,19 +273,15 @@ func TestPostQueriesExecute_AdditionalErrors(t *testing.T) {
 		handler := NewQueryHandler(executor)
 
 		body := `{
-			"entity_type": "assets",
-			"query": {
-				"filters": [{"field": "is_active", "operator": "eq", "value": true}]
-			}
+			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
 		}`
 
-		req := httptest.NewRequest("POST", "/api/v1/queries/execute", bytes.NewReader([]byte(body)))
+		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Request-ID", "test-req-db-error")
-		req = setQueryUserContext(req, 1)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-db-error")
 
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+		handler.QueryAssets(w, req)
 
 		if w.Code != http.StatusInternalServerError {
 			t.Errorf("got status %d, want 500", w.Code)
@@ -487,8 +303,123 @@ func TestPostQueriesExecute_AdditionalErrors(t *testing.T) {
 	})
 }
 
+func TestQueryFindings_Errors(t *testing.T) {
+	t.Run("invalid JSON returns 400", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{invalid json`
+		req := httptest.NewRequest("POST", "/api/v1/query/findings", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-findings-400")
+
+		w := httptest.NewRecorder()
+		handler.QueryFindings(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("got status %d, want 400", w.Code)
+		}
+	})
+
+	t.Run("missing filters returns 400", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{"sort": [{"field": "severity", "order": "desc"}]}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/findings", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-findings-no-filter")
+
+		w := httptest.NewRecorder()
+		handler.QueryFindings(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("got status %d, want 400", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "MISSING_FILTERS" {
+			t.Errorf("got error code %v, want MISSING_FILTERS", errResp["code"])
+		}
+	})
+}
+
+func TestSavedQueries(t *testing.T) {
+	t.Run("ListSavedQueries returns not implemented", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		req := httptest.NewRequest("GET", "/api/v1/query/saved", nil)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-list")
+
+		w := httptest.NewRecorder()
+		handler.ListSavedQueries(w, req)
+
+		if w.Code != http.StatusNotImplemented {
+			t.Errorf("got status %d, want 501", w.Code)
+		}
+	})
+
+	t.Run("CreateSavedQuery returns not implemented", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{"name": "test", "filters": []}`
+		req := httptest.NewRequest("POST", "/api/v1/query/saved", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-create")
+
+		w := httptest.NewRecorder()
+		handler.CreateSavedQuery(w, req)
+
+		if w.Code != http.StatusNotImplemented {
+			t.Errorf("got status %d, want 501", w.Code)
+		}
+	})
+
+	t.Run("GetSavedQuery returns not implemented", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		req := httptest.NewRequest("GET", "/api/v1/query/saved/my-query", nil)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-get")
+
+		w := httptest.NewRecorder()
+		handler.GetSavedQuery(w, req, "my-query")
+
+		if w.Code != http.StatusNotImplemented {
+			t.Errorf("got status %d, want 501", w.Code)
+		}
+	})
+
+	t.Run("DeleteSavedQuery returns not implemented", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		req := httptest.NewRequest("DELETE", "/api/v1/query/saved/my-query", nil)
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-delete")
+
+		w := httptest.NewRecorder()
+		handler.DeleteSavedQuery(w, req, "my-query")
+
+		if w.Code != http.StatusNotImplemented {
+			t.Errorf("got status %d, want 501", w.Code)
+		}
+	})
+}
+
 // Helper function to set user context for query tests
-func setQueryUserContext(req *http.Request, tenantID int64) *http.Request {
+func setQueryUserContextWithRequestID(req *http.Request, tenantID int64, requestID string) *http.Request {
 	userCtx := &auth.UserContext{
 		UserID:   "1",
 		TenantID: tenantID,
@@ -496,5 +427,6 @@ func setQueryUserContext(req *http.Request, tenantID int64) *http.Request {
 		Roles:    []string{"analyst"},
 	}
 	ctx := context.WithValue(req.Context(), auth.UserContextKey, userCtx)
+	ctx = context.WithValue(ctx, "request_id", requestID)
 	return req.WithContext(ctx)
 }
