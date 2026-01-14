@@ -32,18 +32,16 @@ var allowedFields = map[string]map[string]bool{
 }
 
 // allowedOperators defines whitelisted operators
+// Note: Only operators implemented by Translator should be listed here
 var allowedOperators = map[string]bool{
 	"eq":         true,
 	"neq":        true,
 	"in":         true,
-	"not_in":     true,
 	"like":       true,
-	"not_like":   true,
 	"gt":         true,
 	"gte":        true,
 	"lt":         true,
 	"lte":        true,
-	"between":    true,
 	"is_null":    true,
 	"is_not_null": true,
 }

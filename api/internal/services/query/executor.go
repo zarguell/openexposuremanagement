@@ -9,6 +9,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// MaxQueryLimit is the maximum number of rows allowed in a single query
+const MaxQueryLimit = 1000
+
 // QueryResult represents the result of a query execution
 type QueryResult struct {
 	Data []map[string]interface{} `json:"data"`
@@ -43,6 +46,11 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 	// Validate query
 	if err := e.validator.Validate(entityType, q); err != nil {
 		return nil, fmt.Errorf("validation error: %w", err)
+	}
+
+	// Enforce maximum query limit to prevent DoS
+	if q.Limit != nil && *q.Limit > MaxQueryLimit {
+		return nil, fmt.Errorf("limit exceeds maximum of %d", MaxQueryLimit)
 	}
 
 	// Translate to SQL

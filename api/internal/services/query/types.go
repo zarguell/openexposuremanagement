@@ -48,5 +48,23 @@ func (q *Query) Validate() error {
 		}
 	}
 
+	// Validate aggregations if present
+	for _, agg := range q.Aggregations {
+		if strings.TrimSpace(agg.Type) == "" {
+			return errors.New("aggregation type cannot be empty")
+		}
+	}
+
+	// Validate sort if present
+	for _, s := range q.Sort {
+		if strings.TrimSpace(s.Field) == "" {
+			return errors.New("sort field cannot be empty")
+		}
+		order := strings.ToLower(strings.TrimSpace(s.Order))
+		if order != "asc" && order != "desc" {
+			return errors.New("sort order must be 'asc' or 'desc'")
+		}
+	}
+
 	return nil
 }
