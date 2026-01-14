@@ -13,7 +13,15 @@ func NewTranslator() *Translator {
 	return &Translator{}
 }
 
-// Translate converts a query to SQL and returns sql + args
+// Translate converts a validated Query object to parameterized SQL.
+//
+// WARNING: This function assumes the query has already been validated
+// by Validator.Validate() to prevent SQL injection. Always validate
+// before translating. The Translate function interpolates field names,
+// aggregation fields, sort fields, and entity type directly into the SQL
+// string, so these MUST be whitelisted by validation first.
+//
+// Returns: SQL string with $1, $2, ... placeholders and args array
 func (tr *Translator) Translate(entityType string, q *Query) (string, []interface{}, error) {
 	var whereParts []string
 	var args []interface{}
@@ -101,6 +109,8 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 			case "group_by":
 				selectParts = append(selectParts, agg.Field)
 				groupByFields = append(groupByFields, agg.Field)
+			default:
+				return "", nil, fmt.Errorf("unsupported aggregation type: %s", agg.Type)
 			}
 		}
 		selectClause = strings.Join(selectParts, ", ")

@@ -135,6 +135,21 @@ func TestTranslator(t *testing.T) {
 		}
 	})
 
+	t.Run("unsupported aggregation type returns error", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Aggregations: []query.Aggregation{
+				{Type: "invalid_agg_type", Field: "severity"},
+			},
+		}
+		_, _, err := translator.Translate("findings", q)
+		if err == nil {
+			t.Error("expected error for unsupported aggregation type, got nil")
+		}
+	})
+
 	t.Run("in operator with non-array value returns error", func(t *testing.T) {
 		q := &query.Query{
 			Filters: []query.Filter{
