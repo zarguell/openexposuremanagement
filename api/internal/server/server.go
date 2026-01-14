@@ -51,6 +51,8 @@ func (s *Server) registerRoutes() {
 
 	// Asset endpoints
 	apiV1.HandleFunc("/assets", handlers.RequireAuth(handlers.ListAssets(s.db)))
+	// Software for asset endpoint (must be before /assets/ to avoid pattern conflicts)
+	apiV1.HandleFunc("/assets/{id}/software", handlers.RequireAuth(handlers.GetSoftwareForAsset(s.db)))
 	apiV1.HandleFunc("/assets/", handlers.RequireAuth(handlers.GetAssetByID(s.db)))
 
 	// Findings endpoints

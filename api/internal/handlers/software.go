@@ -76,8 +76,22 @@ func GetSoftwareCatalog(db *sqlx.DB) http.HandlerFunc {
 		}
 
 		// Respond with pagination
-		respondWithPagination(w, software, total, params.Limit, params.Offset)
+		respondWithSoftwareList(w, software, total, params.Limit, params.Offset)
 	}
+}
+
+// respondWithSoftwareList sends a paginated software list response
+func respondWithSoftwareList(w http.ResponseWriter, software []repository.SoftwareSummary, total, limit, offset int) {
+	setJSONHeaders(w)
+	response := map[string]interface{}{
+		"software": software,
+		"pagination": Pagination{
+			Total:  total,
+			Limit:  limit,
+			Offset: offset,
+		},
+	}
+	respondJSON(w, http.StatusOK, response)
 }
 
 // GetSoftwareByID handles GET /api/v1/software/{id}
