@@ -64,10 +64,22 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 	args = append(args, tenantID)
 
 	// Inject tenant filter into SQL
-	// For now, simple approach - prepend to WHERE or create WHERE if none exists
+	// Must inject before LIMIT/OFFSET clauses if they exist
 	if !strings.Contains(sql, "WHERE") {
-		sql = sql + " WHERE " + tenantFilter
+		// No WHERE clause yet, need to add one
+		// But must insert before LIMIT/OFFSET if they exist
+		if idx := strings.Index(sql, " LIMIT"); idx != -1 {
+			// Insert WHERE before LIMIT
+			sql = sql[:idx] + " WHERE " + tenantFilter + sql[idx:]
+		} else if idx := strings.Index(sql, " OFFSET"); idx != -1 {
+			// Insert WHERE before OFFSET (shouldn't happen without LIMIT, but handle it)
+			sql = sql[:idx] + " WHERE " + tenantFilter + sql[idx:]
+		} else {
+			// No LIMIT/OFFSET, just append WHERE
+			sql = sql + " WHERE " + tenantFilter
+		}
 	} else {
+		// WHERE exists, prepend tenant filter to existing conditions
 		sql = strings.Replace(sql, "WHERE", "WHERE "+tenantFilter+" AND ", 1)
 	}
 

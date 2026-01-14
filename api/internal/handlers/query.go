@@ -94,14 +94,8 @@ func (h *QueryHandler) executeQuery(w http.ResponseWriter, r *http.Request, requ
 		return
 	}
 
-	// Validate query is present
-	if len(q.Filters) == 0 {
-		api.WriteErrorResponse(w, &api.QueryError{
-			Code:    "MISSING_FILTERS",
-			Message: "Query must have at least one filter",
-		}, requestID, http.StatusBadRequest)
-		return
-	}
+	// Note: We allow empty filters to return all data (useful for query pages)
+	// The frontend can add filters as needed to narrow down results
 
 	// Convert tenantID to string for executor
 	tenantID := strconv.FormatInt(user.TenantID, 10)
