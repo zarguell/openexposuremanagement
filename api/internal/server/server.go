@@ -34,9 +34,11 @@ func New(cfg *config.Config, db *sqlx.DB) *Server {
 
 // registerRoutes sets up all HTTP routes
 func (s *Server) registerRoutes() {
-	// Health check endpoint (no auth required)
+	// Health check endpoints (no auth required)
 	s.router.HandleFunc("/healthz", s.handleHealthz)
-	s.router.HandleFunc("/readyz", s.handleReadyz)
+	s.router.HandleFunc("/healthz/live", s.handleLive)
+	s.router.HandleFunc("/healthz/ready", s.handleReady)
+	s.router.HandleFunc("/readyz", s.handleReadyz) // Deprecated: use /healthz/ready
 
 	// API v1 routes
 	apiV1 := http.NewServeMux()
@@ -125,6 +127,49 @@ func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
 	// Check database connection
 	if err := s.db.Ping(); err != nil {
 		log.Error().Err(err).Msg("Database health check failed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"status":"not ready","error":"database unavailable"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ready"}`))
+}
+
+// handleLive handles liveness probe requests
+func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Liveness probe - service is running
+	// Always return 200 if the process is up
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"alive"}`))
+}
+
+// handleReady handles readiness probe requests
+func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Readiness probe - check dependencies
+	if s.db == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"status":"not ready","error":"database not connected"}`))
+		return
+	}
+
+	// Check database connection
+	if err := s.db.Ping(); err != nil {
+		log.Error().Err(err).Msg("Database readiness check failed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(`{"status":"not ready","error":"database unavailable"}`))
