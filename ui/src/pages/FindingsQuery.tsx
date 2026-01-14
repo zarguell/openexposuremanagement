@@ -55,7 +55,7 @@ const FINDINGS_COLUMNS = [
     label: 'EPSS',
     sortable: true,
     width: '100px',
-    render: (value: number) => value?.toFixed(3) ?? 'N/A',
+    render: (value: number) => value != null ? value.toFixed(3) : 'N/A',
   },
   {
     key: 'last_observed_at',

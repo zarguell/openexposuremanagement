@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Link } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import AuthCallback from './auth/AuthCallback'
@@ -56,10 +56,77 @@ function AppContent() {
       <header style={{ backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', height: '4rem', alignItems: 'center' }}>
-            <div style={{ display: 'flex' }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              <Link to="/" style={{ textDecoration: 'none' }}>
                 <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>Open Exposure Management</h1>
-              </div>
+              </Link>
+              {isAuthenticated && (
+                <nav style={{ display: 'flex', gap: '1rem' }}>
+                  <Link
+                    to="/"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.5rem',
+                      borderRadius: '0.375rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      e.currentTarget.style.color = '#111827';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    to="/findings/query"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.5rem',
+                      borderRadius: '0.375rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      e.currentTarget.style.color = '#111827';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                  >
+                    Findings
+                  </Link>
+                  <Link
+                    to="/assets/query"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.5rem',
+                      borderRadius: '0.375rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      e.currentTarget.style.color = '#111827';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                  >
+                    Assets
+                  </Link>
+                </nav>
+              )}
             </div>
             {isAuthenticated && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

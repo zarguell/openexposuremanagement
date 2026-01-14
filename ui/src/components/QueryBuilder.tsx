@@ -26,6 +26,16 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
 }) => {
   const allowedFields = ALLOWED_FIELDS[entity];
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [jsonQuery, setJsonQuery] = useState(JSON.stringify(query, null, 2));
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  // Update JSON when query changes in simple mode
+  React.useEffect(() => {
+    if (!isAdvancedMode) {
+      setJsonQuery(JSON.stringify(query, null, 2));
+      setJsonError(null);
+    }
+  }, [query, isAdvancedMode]);
 
   const handleAddFilter = useCallback(() => {
     const newFilter: Filter = {
@@ -57,6 +67,29 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
       filters: newFilters
     });
   }, [query, onChange]);
+
+  const handleJsonQueryChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setJsonQuery(newValue);
+
+    try {
+      const parsed = JSON.parse(newValue);
+      // Validate the parsed query has the right structure
+      if (typeof parsed === 'object' && parsed !== null) {
+        const validatedQuery: Query = {
+          filters: Array.isArray(parsed.filters) ? parsed.filters : [],
+          sort: Array.isArray(parsed.sort) ? parsed.sort : [],
+          limit: typeof parsed.limit === 'number' ? parsed.limit : 50,
+          offset: typeof parsed.offset === 'number' ? parsed.offset : 0,
+        };
+        onChange(validatedQuery);
+        setJsonError(null);
+      }
+    } catch (err) {
+      // Don't update the query on invalid JSON, just show error
+      setJsonError(err instanceof Error ? err.message : 'Invalid JSON');
+    }
+  }, [onChange]);
 
   const renderValueInput = (filter: Filter, index: number) => {
     if (['is_null', 'is_not_null'].includes(filter.operator)) {
@@ -286,75 +319,114 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
             </button>
           </div>
           <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
-            {isAdvancedMode ? 'Free-form text input for all values' : 'Guided dropdowns for common fields'}
+            {isAdvancedMode ? 'Free-form JSON query editor' : 'Guided dropdowns for common fields'}
           </span>
         </div>
       )}
 
-      <div className="filters-list">
-        {query.filters.map((filter, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && (
-              <div className="filter-separator">
-                <span className="separator-text">AND</span>
-              </div>
-            )}
-            <div 
-              data-testid="filter-row"
-              className="filter-row"
-            >
-            <select
-              className="filter-select"
-              value={filter.field}
-              onChange={(e) => handleFilterChange(index, { field: e.target.value })}
-            >
-              {allowedFields.map(field => (
-                <option key={field} value={field}>
-                  {field}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="filter-select"
-              value={filter.operator}
-              onChange={(e) => handleFilterChange(index, { operator: e.target.value })}
-            >
-              {ALLOWED_OPERATORS.map(op => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
-
-            {renderValueInput(filter, index)}
-
-            <button
-              onClick={() => handleRemoveFilter(index)}
-              className="remove-btn"
-              aria-label="Remove filter"
-              title="Remove filter"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+      {isAdvancedMode ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {jsonError && (
+            <div style={{
+              padding: '0.75rem',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '0.375rem',
+              color: '#991b1b',
+              fontSize: '0.875rem',
+            }}>
+              <strong>JSON Error:</strong> {jsonError}
+            </div>
+          )}
+          <textarea
+            value={jsonQuery}
+            onChange={handleJsonQueryChange}
+            placeholder='{"filters": [...], "limit": 50, "offset": 0}'
+            style={{
+              width: '100%',
+              minHeight: '200px',
+              padding: '0.75rem',
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              border: `1px solid ${jsonError ? '#ef4444' : '#d1d5db'}`,
+              borderRadius: '0.375rem',
+              backgroundColor: jsonError ? '#fef2f2' : 'white',
+              resize: 'vertical',
+            }}
+            data-testid="json-query-editor"
+          />
+          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+            💡 Edit the JSON query directly. Changes are applied automatically when valid.
           </div>
-        </React.Fragment>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="filters-list">
+            {query.filters.map((filter, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && (
+                  <div className="filter-separator">
+                    <span className="separator-text">AND</span>
+                  </div>
+                )}
+                <div
+                  data-testid="filter-row"
+                  className="filter-row"
+                >
+                <select
+                  className="filter-select"
+                  value={filter.field}
+                  onChange={(e) => handleFilterChange(index, { field: e.target.value })}
+                >
+                  {allowedFields.map(field => (
+                    <option key={field} value={field}>
+                      {field}
+                    </option>
+                  ))}
+                </select>
 
-      <button
-        onClick={handleAddFilter}
-        className="add-btn"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Add Filter
-      </button>
+                <select
+                  className="filter-select"
+                  value={filter.operator}
+                  onChange={(e) => handleFilterChange(index, { operator: e.target.value })}
+                >
+                  {ALLOWED_OPERATORS.map(op => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </select>
+
+                {renderValueInput(filter, index)}
+
+                <button
+                  onClick={() => handleRemoveFilter(index)}
+                  className="remove-btn"
+                  aria-label="Remove filter"
+                  title="Remove filter"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </React.Fragment>
+            ))}
+          </div>
+
+          <button
+            onClick={handleAddFilter}
+            className="add-btn"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Filter
+          </button>
+        </>
+      )}
     </div>
   );
 };

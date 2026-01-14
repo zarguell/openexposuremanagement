@@ -69,7 +69,7 @@ export function FindingDrawer({ isOpen, onClose, finding }: FindingDrawerProps) 
           </div>
         )}
 
-        {finding.epss_score !== undefined && (
+        {finding.epss_score != null && (
           <div className="detail-row">
             <div className="detail-label">EPSS Score:</div>
             <div className="detail-value">
