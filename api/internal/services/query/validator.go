@@ -6,28 +6,49 @@ import (
 )
 
 // allowedFields defines whitelisted fields per entity
+// These fields must match the columns in the database views:
+// - findings: uses the "findings" view which joins finding_instances, finding_definitions, assets, and intel_cve
+// - assets: uses the "assets_extended" view which joins assets with asset_identifiers
 var allowedFields = map[string]map[string]bool{
 	"findings": {
-		"severity":          true,
-		"scanner_status":    true,
-		"effective_status":  true,
-		"cve":               true,
-		"source":            true,
-		"asset_name":        true,
-		"first_observed_at": true,
-		"last_observed_at":  true,
-		"epss_score":        true,
-		"is_kev":            true,
-		"has_cve":           true,
+		"id":                 true,
+		"tenant_id":          true,
+		"asset_id":           true,
+		"definition_uid":     true,
+		"scanner_status":     true,
+		"effective_status":   true,
+		"effective_reason":   true,
+		"effective_revision": true,
+		"first_observed_at":  true,
+		"last_observed_at":   true,
+		"evidence_json":      true,
+		"created_at":         true,
+		"updated_at":         true,
+		"source":             true,
+		"severity":           true,
+		"title":              true,
+		"asset_name":         true,
+		"epss_score":         true,
+		"epss_percentile":    true,
+		"is_kev":             true,
+		"kev_date_added":     true,
+		"kev_due_date":       true,
+		"cve":                true,
+		"has_cve":            true,
 	},
 	"assets": {
+		"id":             true,
+		"tenant_id":      true,
 		"canonical_name": true,
+		"first_seen_at":  true,
+		"last_seen_at":   true,
+		"owner_team_id":  true,
+		"is_active":      true,
+		"created_at":     true,
+		"updated_at":     true,
 		"hostname_norm":  true,
 		"shortname_norm": true,
 		"ipv4":           true,
-		"first_seen_at":  true,
-		"last_seen_at":   true,
-		"is_active":      true,
 	},
 }
 

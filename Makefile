@@ -55,7 +55,7 @@ migrate-create: ## Create new migration (usage: make migrate-create name=create_
 seed: ## Seed database with sample data
 	@echo "Seeding sample data..."
 	@if [ -f scripts/seed-data.go ]; then \
-		cd scripts && go run seed-data.go -demo; \
+		go run scripts/seed-data.go -demo -data-dir sample-data; \
 	else \
 		echo "Seed script not yet implemented"; \
 	fi

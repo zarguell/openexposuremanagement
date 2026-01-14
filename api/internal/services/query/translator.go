@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+// entityToTable maps entity types to their actual database table/view names
+var entityToTable = map[string]string{
+	"findings":        "findings",        // Uses the "findings" view
+	"assets":          "assets_extended", // Uses the "assets_extended" view
+}
+
 // Translator converts Query objects to SQL
 type Translator struct{}
 
@@ -145,7 +151,11 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 
 	// Assemble final query
 	var queryParts []string
-	queryParts = append(queryParts, fmt.Sprintf("SELECT %s FROM %s", selectClause, entityType))
+	tableName := entityToTable[entityType]
+	if tableName == "" {
+		tableName = entityType // fallback to entity type if not in map
+	}
+	queryParts = append(queryParts, fmt.Sprintf("SELECT %s FROM %s", selectClause, tableName))
 	if len(whereParts) > 0 {
 		queryParts = append(queryParts, "WHERE "+strings.Join(whereParts, " AND "))
 	}
