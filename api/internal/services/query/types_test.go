@@ -43,4 +43,74 @@ func TestQueryValidation(t *testing.T) {
 			t.Error("expected error for empty field")
 		}
 	})
+
+	t.Run("empty aggregation type fails", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Aggregations: []query.Aggregation{
+				{Type: "", Field: "severity"},
+			},
+		}
+		if err := q.Validate(); err == nil {
+			t.Error("expected error for empty aggregation type")
+		}
+	})
+
+	t.Run("empty sort field fails", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Sort: []query.Sort{
+				{Field: "", Order: "asc"},
+			},
+		}
+		if err := q.Validate(); err == nil {
+			t.Error("expected error for empty sort field")
+		}
+	})
+
+	t.Run("invalid sort order fails", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Sort: []query.Sort{
+				{Field: "severity", Order: "invalid"},
+			},
+		}
+		if err := q.Validate(); err == nil {
+			t.Error("expected error for invalid sort order")
+		}
+	})
+
+	t.Run("accepts uppercase sort order", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Sort: []query.Sort{
+				{Field: "severity", Order: "ASC"},
+			},
+		}
+		if err := q.Validate(); err != nil {
+			t.Errorf("should accept ASC: %v", err)
+		}
+	})
+
+	t.Run("accepts mixed case sort order", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "eq", Value: "critical"},
+			},
+			Sort: []query.Sort{
+				{Field: "severity", Order: "DeSc"},
+			},
+		}
+		if err := q.Validate(); err != nil {
+			t.Errorf("should accept DeSc: %v", err)
+		}
+	})
 }

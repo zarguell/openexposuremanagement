@@ -79,4 +79,20 @@ func TestValidator(t *testing.T) {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	})
+
+	t.Run("removed operators are rejected", func(t *testing.T) {
+		removedOperators := []string{"not_in", "not_like", "between"}
+
+		for _, op := range removedOperators {
+			q := &query.Query{
+				Filters: []query.Filter{
+					{Field: "severity", Operator: op, Value: "critical"},
+				},
+			}
+			err := v.Validate("findings", q)
+			if err == nil {
+				t.Errorf("%s operator should be rejected", op)
+			}
+		}
+	})
 }
