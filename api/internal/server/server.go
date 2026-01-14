@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -58,6 +59,32 @@ func (s *Server) registerRoutes() {
 	queryHandler := handlers.NewQueryHandler(queryExecutor)
 	apiV1.HandleFunc("/query/findings", handlers.RequireAuth(queryHandler.QueryFindings))
 	apiV1.HandleFunc("/query/assets", handlers.RequireAuth(queryHandler.QueryAssets))
+
+	// Saved query detail endpoints with name parameter (stubs for next task)
+	// NOTE: Must register /query/saved/ before /query/saved to avoid pattern conflicts
+	apiV1.HandleFunc("/query/saved/", handlers.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		// Extract name from path
+		// After StripPrefix("/api/v1"), path becomes /query/saved/{name}
+		prefix := "/query/saved/"
+		if !strings.HasPrefix(r.URL.Path, prefix) {
+			http.NotFound(w, r)
+			return
+		}
+		name := strings.TrimPrefix(r.URL.Path, prefix)
+		if name == "" {
+			http.NotFound(w, r)
+			return
+		}
+
+		switch r.Method {
+		case "GET":
+			queryHandler.GetSavedQuery(w, r, name)
+		case "DELETE":
+			queryHandler.DeleteSavedQuery(w, r, name)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
 	// Saved query endpoints (stubs for next task)
 	apiV1.HandleFunc("/query/saved", handlers.RequireAuth(func(w http.ResponseWriter, r *http.Request) {

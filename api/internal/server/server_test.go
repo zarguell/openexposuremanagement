@@ -134,6 +134,44 @@ func TestQueryEndpointsRegistered(t *testing.T) {
 			t.Logf("Expected status 501 Not Implemented for stub, got %d", w.Code)
 		}
 	})
+
+	t.Run("GET /api/v1/query/saved/{name} is registered (stub)", func(t *testing.T) {
+		s := New(cfg, nil)
+
+		req := httptest.NewRequest("GET", "/api/v1/query/saved/my-query", nil)
+
+		w := httptest.NewRecorder()
+		s.router.ServeHTTP(w, req)
+
+		// Should not be 404
+		if w.Code == http.StatusNotFound {
+			t.Errorf("Endpoint not registered: got status 404")
+		}
+
+		// Stub endpoints should return 501 Not Implemented
+		if w.Code != http.StatusNotImplemented {
+			t.Logf("Expected status 501 Not Implemented for stub, got %d", w.Code)
+		}
+	})
+
+	t.Run("DELETE /api/v1/query/saved/{name} is registered (stub)", func(t *testing.T) {
+		s := New(cfg, nil)
+
+		req := httptest.NewRequest("DELETE", "/api/v1/query/saved/my-query", nil)
+
+		w := httptest.NewRecorder()
+		s.router.ServeHTTP(w, req)
+
+		// Should not be 404
+		if w.Code == http.StatusNotFound {
+			t.Errorf("Endpoint not registered: got status 404")
+		}
+
+		// Stub endpoints should return 501 Not Implemented
+		if w.Code != http.StatusNotImplemented {
+			t.Logf("Expected status 501 Not Implemented for stub, got %d", w.Code)
+		}
+	})
 }
 
 func TestQueryEndpointsRequireAuth(t *testing.T) {
@@ -188,6 +226,32 @@ func TestQueryEndpointsRequireAuth(t *testing.T) {
 		s := New(cfg, nil)
 
 		req := httptest.NewRequest("GET", "/api/v1/query/saved", nil)
+
+		w := httptest.NewRecorder()
+		s.router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %d", w.Code)
+		}
+	})
+
+	t.Run("GET /api/v1/query/saved/{name} requires auth", func(t *testing.T) {
+		s := New(cfg, nil)
+
+		req := httptest.NewRequest("GET", "/api/v1/query/saved/my-query", nil)
+
+		w := httptest.NewRecorder()
+		s.router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %d", w.Code)
+		}
+	})
+
+	t.Run("DELETE /api/v1/query/saved/{name} requires auth", func(t *testing.T) {
+		s := New(cfg, nil)
+
+		req := httptest.NewRequest("DELETE", "/api/v1/query/saved/my-query", nil)
 
 		w := httptest.NewRecorder()
 		s.router.ServeHTTP(w, req)
