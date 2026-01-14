@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react';
-import { 
-  Query, 
-  EntityType, 
-  Filter, 
-  ALLOWED_FIELDS, 
+import React, { useCallback, useState } from 'react';
+import {
+  Query,
+  EntityType,
+  Filter,
+  ALLOWED_FIELDS,
   ALLOWED_OPERATORS,
   SEVERITY_VALUES,
   SCANNER_STATUS_VALUES,
@@ -15,14 +15,17 @@ interface QueryBuilderProps {
   entity: EntityType;
   query: Query;
   onChange: (query: Query) => void;
+  showAdvancedToggle?: boolean;
 }
 
-export const QueryBuilder: React.FC<QueryBuilderProps> = ({ 
-  entity, 
-  query, 
-  onChange 
+export const QueryBuilder: React.FC<QueryBuilderProps> = ({
+  entity,
+  query,
+  onChange,
+  showAdvancedToggle = true,
 }) => {
   const allowedFields = ALLOWED_FIELDS[entity];
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
 
   const handleAddFilter = useCallback(() => {
     const newFilter: Filter = {
@@ -73,6 +76,88 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
           placeholder="Comma separated values..."
         />
       );
+    }
+
+    // In simple mode, use dropdowns for known fields
+    if (!isAdvancedMode) {
+      // Severity dropdown
+      if (filter.field === 'severity') {
+        return (
+          <select
+            className="filter-value-select"
+            value={filter.value}
+            onChange={(e) => handleChange(e.target.value)}
+          >
+            <option value="">Select Severity...</option>
+            {SEVERITY_VALUES.map(val => (
+              <option key={val} value={val}>{val}</option>
+            ))}
+          </select>
+        );
+      }
+
+      // Scanner status dropdown
+      if (filter.field === 'scanner_status') {
+        return (
+          <select
+            className="filter-value-select"
+            value={filter.value}
+            onChange={(e) => handleChange(e.target.value)}
+          >
+            <option value="">Select Status...</option>
+            {SCANNER_STATUS_VALUES.map(val => (
+              <option key={val} value={val}>{val}</option>
+            ))}
+          </select>
+        );
+      }
+
+      // Effective status dropdown
+      if (filter.field === 'effective_status') {
+        return (
+          <select
+            className="filter-value-select"
+            value={filter.value}
+            onChange={(e) => handleChange(e.target.value)}
+          >
+            <option value="">Select Status...</option>
+            {EFFECTIVE_STATUS_VALUES.map(val => (
+              <option key={val} value={val}>{val}</option>
+            ))}
+          </select>
+        );
+      }
+
+      // Boolean fields dropdown
+      if (['is_active', 'is_kev', 'has_cve'].includes(filter.field)) {
+        return (
+          <select
+            className="filter-value-select"
+            value={String(filter.value)}
+            onChange={(e) => handleChange(e.target.value === 'true')}
+          >
+            <option value="">Select...</option>
+            <option value="true">True</option>
+            <option value="false">False</option>
+          </select>
+        );
+      }
+
+      // Source field dropdown
+      if (filter.field === 'source') {
+        return (
+          <select
+            className="filter-value-select"
+            value={filter.value}
+            onChange={(e) => handleChange(e.target.value)}
+          >
+            <option value="">Select Source...</option>
+            <option value="tenable">Tenable</option>
+            <option value="qualys">Qualys</option>
+            <option value="rapid7">Rapid7</option>
+          </select>
+        );
+      }
     }
 
     if (filter.field === 'severity') {
@@ -134,19 +219,78 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
       );
     }
 
+    // Default text input for advanced mode or unknown fields
     return (
       <input
         type="text"
         className="filter-input"
         value={filter.value}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder="Value..."
+        placeholder={isAdvancedMode ? "Enter value..." : "Value..."}
       />
     );
   };
 
   return (
     <div className="query-builder">
+      {showAdvancedToggle && (
+        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={() => setIsAdvancedMode(false)}
+              className={`mode-toggle ${!isAdvancedMode ? 'active' : ''}`}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: !isAdvancedMode ? '#3b82f6' : 'white',
+                color: !isAdvancedMode ? 'white' : '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => {
+                if (!isAdvancedMode) return;
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseOut={(e) => {
+                if (!isAdvancedMode) return;
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              Simple Mode
+            </button>
+            <button
+              onClick={() => setIsAdvancedMode(true)}
+              className={`mode-toggle ${isAdvancedMode ? 'active' : ''}`}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: isAdvancedMode ? '#3b82f6' : 'white',
+                color: isAdvancedMode ? 'white' : '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => {
+                if (isAdvancedMode) return;
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseOut={(e) => {
+                if (isAdvancedMode) return;
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              Advanced Mode
+            </button>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+            {isAdvancedMode ? 'Free-form text input for all values' : 'Guided dropdowns for common fields'}
+          </span>
+        </div>
+      )}
+
       <div className="filters-list">
         {query.filters.map((filter, index) => (
           <React.Fragment key={index}>

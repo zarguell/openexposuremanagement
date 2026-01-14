@@ -8,7 +8,9 @@ import ErrorBoundary from './components/ErrorBoundary'
 import DebugPanel from './components/DebugPanel'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
+import AssetsQuery from './pages/AssetsQuery'
 import Findings from './pages/Findings'
+import FindingsQuery from './pages/FindingsQuery'
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -122,9 +124,19 @@ function AppContent() {
                 <Assets />
               </ProtectedRoute>
             } />
+            <Route path="/assets/query" element={
+              <ProtectedRoute>
+                <AssetsQuery />
+              </ProtectedRoute>
+            } />
             <Route path="/findings" element={
               <ProtectedRoute>
                 <Findings />
+              </ProtectedRoute>
+            } />
+            <Route path="/findings/query" element={
+              <ProtectedRoute>
+                <FindingsQuery />
               </ProtectedRoute>
             } />
           </Routes>

@@ -1,33 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../api/client';
+import { Link } from 'react-router-dom';
+import { useDashboardQueries } from '../hooks/useDashboardQueries';
+import { DEFAULT_DASHBOARD } from '../config/dashboard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import StatusBadge from '../components/StatusBadge';
 
 function Dashboard() {
-  const { data: dashboard, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: apiClient.getDashboard,
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
-
-  console.log('📊 Dashboard state:', {
-    isLoading,
-    isError,
-    isSuccess,
-    error: error instanceof Error ? error.message : String(error),
-    dataKeys: dashboard ? Object.keys(dashboard) : 'no data',
-    timestamp: new Date().toISOString(),
-  });
-
-  if (dashboard) {
-    console.log('📊 Dashboard data:', JSON.stringify(dashboard, null, 2));
-  }
-
-  const { data: intelStatus } = useQuery({
-    queryKey: ['intel-status'],
-    queryFn: apiClient.getIntelStatus,
-    refetchInterval: 60000, // Refetch every minute
-  });
+  const { results, isLoading, isError, widgets } = useDashboardQueries(DEFAULT_DASHBOARD);
 
   if (isLoading) {
     return (
@@ -37,7 +14,7 @@ function Dashboard() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div style={{ padding: '1.5rem 1rem' }}>
         <div style={{
@@ -50,145 +27,243 @@ function Dashboard() {
           <h3 style={{ fontSize: '1.125rem', fontWeight: '500', marginBottom: '0.5rem' }}>
             Error loading dashboard
           </h3>
-          <p>{error.message}</p>
+          <p>Some dashboard widgets failed to load. Please try refreshing the page.</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div style={{ padding: '1.5rem 1rem' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>
-          Dashboard
-        </h1>
-        <p style={{ color: '#6b7280' }}>
-          Overview of your vulnerability management and asset inventory
-        </p>
-      </div>
+  const renderMetricWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    const count = widget.aggregation === 'count'
+      ? result.meta.total_rows
+      : (result.data?.[0]?.[widget.displayField || 'count'] || result.meta.total_rows);
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {/* Asset Counts */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
-            Assets
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-             <div style={{ textAlign: 'center' }}>
-               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6' }}>
-                 {dashboard?.Assets?.TotalAssets || 0}
-               </div>
-               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Total</div>
-             </div>
-             <div style={{ textAlign: 'center' }}>
-               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
-                 {dashboard?.Assets?.ActiveAssets || 0}
-               </div>
-               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Active</div>
-             </div>
-          </div>
-        </div>
-
-        {/* Finding Counts */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
-            Findings
-          </h3>
-           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-             <div style={{ textAlign: 'center' }}>
-               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
-                 {dashboard?.Findings?.OpenCount || 0}
-               </div>
-               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Open</div>
-             </div>
-             <div style={{ textAlign: 'center' }}>
-               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
-                 {dashboard?.Findings?.SuppressedCount || 0}
-               </div>
-               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Suppressed</div>
-             </div>
-           </div>
-        </div>
-
-        {/* Threat Intel Status */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          gridColumn: '1 / -1'
-        }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
-            Threat Intelligence Status
-          </h3>
-          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-            {intelStatus?.sources && Object.entries(intelStatus.sources).map(([source, status]: [string, any]) => (
-              <div key={source} style={{ minWidth: '200px' }}>
-                <div style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '0.5rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  {source.toUpperCase()}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <StatusBadge
-                    status={status.last_sync_at ? 'Active' : 'Inactive'}
-                    variant="status"
-                    size="sm"
-                  />
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    {status.last_sync_at ?
-                      new Date(status.last_sync_at).toLocaleDateString() :
-                      'Never synced'
-                    }
-                  </span>
-                </div>
-                {status.error && (
-                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>
-                    Error: {status.error}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Placeholder */}
+    const content = (
       <div style={{
         backgroundColor: 'white',
         borderRadius: '0.5rem',
         padding: '1.5rem',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        cursor: widget.linkTo ? 'pointer' : 'default',
+        height: '100%',
+      }}
+      onMouseOver={(e) => {
+        if (widget.linkTo) {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 4px 6px 0 rgba(0, 0, 0, 0.1)';
+        }
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
+      }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', margin: 0 }}>
+            {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
+            {widget.title}
+          </h3>
+          {result.error && (
+            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem' }}>⚠️</span>
+          )}
+        </div>
+        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: widget.color || '#3b82f6' }}>
+          {count.toLocaleString()}
+        </div>
+      </div>
+    );
+
+    if (widget.linkTo) {
+      return <Link to={widget.linkTo} style={{ textDecoration: 'none', display: 'block' }}>{content}</Link>;
+    }
+    return content;
+  };
+
+  const renderListWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '0.5rem',
+        padding: '1.5rem',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
       }}>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
-          Recent Activity
-        </h3>
-        <p style={{ color: '#6b7280' }}>
-          Recent asset discoveries and finding updates will appear here.
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', margin: 0 }}>
+            {widget.icon && <span style={{ marginRight: '0.5rem' }}>{widget.icon}</span>}
+            {widget.title}
+          </h3>
+          {result.error && (
+            <span title={result.error} style={{ color: '#ef4444', fontSize: '1.25rem', marginLeft: '0.5rem' }}>⚠️</span>
+          )}
+        </div>
+        {result.data && result.data.length > 0 ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {result.data.slice(0, 5).map((item: any, idx: number) => (
+              <li
+                key={idx}
+                style={{
+                  padding: '0.5rem 0',
+                  borderBottom: idx < result.data.length - 1 ? '1px solid #f3f4f6' : 'none',
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                }}
+              >
+                {item[widget.displayField || 'hostname_norm'] || item.hostname || item.canonical_name || 'Unknown'}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>No data available</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderWidget = (widget: typeof widgets[number], result: typeof results[number]) => {
+    switch (widget.type) {
+      case 'metric':
+        return renderMetricWidget(widget, result);
+      case 'list':
+        return renderListWidget(widget, result);
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div style={{ padding: '1.5rem 1rem' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>
+          {DEFAULT_DASHBOARD.title}
+        </h1>
+        {DEFAULT_DASHBOARD.description && (
+          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+            {DEFAULT_DASHBOARD.description}
+          </p>
+        )}
+
+        {/* Navigation Links */}
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <Link
+            to="/assets/query"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.625rem 1.25rem',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              borderRadius: '0.375rem',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; }}
+          >
+            🔍 Query Assets
+          </Link>
+          <Link
+            to="/findings/query"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.625rem 1.25rem',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              borderRadius: '0.375rem',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#7c3aed'; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#8b5cf6'; }}
+          >
+            ⚠️ Query Findings
+          </Link>
+        </div>
+      </div>
+
+      {/* Assets Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
+          Assets Overview
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+        }}>
+          {widgets.filter(w => w.entity === 'assets').map((widget) => {
+            const result = results.find(r => r.id === widget.id)!;
+            return (
+              <div key={widget.id}>
+                {renderWidget(widget, result)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Findings Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
+          Findings Overview
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+        }}>
+          {widgets.filter(w => w.entity === 'findings' && !w.id.includes('kev') && !w.id.includes('epss')).map((widget) => {
+            const result = results.find(r => r.id === widget.id)!;
+            return (
+              <div key={widget.id}>
+                {renderWidget(widget, result)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Threat Intelligence Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
+          Threat Intelligence
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+        }}>
+          {widgets.filter(w => w.id.includes('kev') || w.id.includes('epss')).map((widget) => {
+            const result = results.find(r => r.id === widget.id)!;
+            return (
+              <div key={widget.id}>
+                {renderWidget(widget, result)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Info Footer */}
+      <div style={{
+        backgroundColor: '#f9fafb',
+        border: '1px solid #e5e7eb',
+        borderRadius: '0.5rem',
+        padding: '1rem',
+        fontSize: '0.875rem',
+        color: '#6b7280',
+      }}>
+        <p style={{ margin: 0 }}>
+          💡 <strong>Tip:</strong> Click on any metric to view the detailed query results. All widgets automatically refresh every 30 seconds.
         </p>
       </div>
     </div>
   );
 }
 
-export default Dashboard
+export default Dashboard;
