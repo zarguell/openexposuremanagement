@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/openexposuremanagement/oem/internal/config"
 	"github.com/openexposuremanagement/oem/internal/handlers"
+	"github.com/openexposuremanagement/oem/internal/services/query"
 	"github.com/rs/zerolog/log"
 )
 
@@ -51,6 +52,23 @@ func (s *Server) registerRoutes() {
 
 	// Findings endpoints
 	apiV1.HandleFunc("/findings", handlers.RequireAuth(handlers.ListFindings(s.db)))
+
+	// Query endpoints (require auth)
+	queryExecutor := query.NewExecutor(s.db)
+	queryHandler := handlers.NewQueryHandler(queryExecutor)
+	apiV1.HandleFunc("/query/findings", handlers.RequireAuth(queryHandler.QueryFindings))
+	apiV1.HandleFunc("/query/assets", handlers.RequireAuth(queryHandler.QueryAssets))
+
+	// Saved query endpoints (stubs for next task)
+	apiV1.HandleFunc("/query/saved", handlers.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			queryHandler.ListSavedQueries(w, r)
+		} else if r.Method == http.MethodPost {
+			queryHandler.CreateSavedQuery(w, r)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
 	// Dashboard endpoints
 	apiV1.HandleFunc("/dashboard", handlers.RequireAuth(handlers.GetDashboard(s.db)))
