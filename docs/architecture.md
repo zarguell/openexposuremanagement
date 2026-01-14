@@ -70,6 +70,15 @@ Asset locator guidance:
   - MVP: `alias_type='CVE'`
 - `finding_instances(id pk, tenant_id, asset_id fk, definition_uid fk, scanner_status, first_observed_at, last_observed_at, evidence_json, effective_status, effective_reason, effective_revision bigint)`
 
+### Software Inventory (CPE-based)
+- `software(id BIGSERIAL pk, cpe_string VARCHAR(500) UNIQUE, vendor, product_name, version, edition, target_hw, lang, title_formatted, created_at, updated_at)`
+  - CPE (Common Platform Enumeration) 2.3 format as canonical identifier
+  - Best-effort normalization from scanner output (vendor/product/version)
+  - `title_formatted`: human-readable display string
+- `asset_software(id BIGSERIAL pk, tenant_id, asset_id fk, software_id fk, source, install_path, first_seen_at, last_seen_at, created_at, updated_at)`
+  - Junction table with UNIQUE(tenant_id, asset_id, software_id)
+  - Current-state only; historical trends deferred to OpenSearch
+
 ### Threat intel cache (global, shared)
 - `intel_cve(cve pk, description text, cvss_score numeric, cvss_vector varchar, epss_score numeric, epss_percentile numeric, is_kev bool, kev_date_added date, kev_due_date date, updated_at timestamptz)`
   - **NVD data**: `description`, `cvss_score`, `cvss_vector` for CVE details
@@ -138,6 +147,9 @@ Reads should be fast, so we compute effective status on write.
 ### Query patterns
 - Findings list: filter by `source`, severity, `effective_status`, `cve`, asset name.
 - Asset list: search by canonical name / hostname.
+- Software catalog: browse by vendor, product, version, CPE; see which assets have each software.
+- Software + findings: join software to findings via assets to see vulnerabilities affecting installed products (e.g., "assets with Log4j that have CVE-2021-44228").
+- Missing software: use query framework with `NOT` operator (e.g., assets missing CrowdStrike).
 
 ### Indexing (examples)
 - B-tree indexes: `(tenant_id, last_seen_at)`, `(tenant_id, effective_status)`, `(tenant_id, definition_uid)`.
@@ -166,10 +178,16 @@ Base: `/api/v1`
     4. Upsert finding instance window (first/last observed)
     5. Attach CVE aliases
     6. Compute `effective_status` on write
+    7. **Normalize software to CPE and upsert to `software` and `asset_software` tables**
+    8. **Delete software not seen in latest scan (maintains current-state)**
 
 ### Assets
 - `GET /assets?query=...`
-- `GET /assets/{id}`
+- `GET /assets/{id}` — includes `software` array (installed software with CPE, title, first_seen, last_seen)
+
+### Software
+- `GET /software?vendor=...&product=...&version=...&cpe=...` — browse software catalog
+- `GET /software/{id}` — software details + affected assets + related findings summary
 
 ### Findings
 - `GET /findings?query=...&include_suppressed=false`
@@ -188,9 +206,12 @@ Base: `/api/v1`
   - total assets, open findings counts by severity
   - "Intel last updated at"
 - Asset Inventory:
-  - table + asset details drawer
+  - table + asset details drawer (with software tab showing installed software)
+- Software Catalog:
+  - table + software details drawer (affected assets, related findings)
+  - filters for vendor, product, version, CPE
 - Findings List:
-  - table with filters (asset, cve, source, severity, effective_status)
+  - table with filters (asset, cve, source, severity, effective_status, software)
   - show NVD description, CVSS score, EPSS score + KEV flags/due date if present
 
 ### State
@@ -213,3 +234,6 @@ Base: `/api/v1`
 - **NVD enrichment visible** (CVE descriptions, CVSS scores/vectors).
 - EPSS/KEV enrichment visible, plus "last updated" timestamp.
 - Dashboard shows aggregate counts and intel sync status.
+- **Software inventory ingested via VM findings payload with CPE normalization.**
+- **Software catalog browsable with filters for vendor/product/version.**
+- **Query framework supports software+findings joins (e.g., "assets with Log4j and CVE-2021-44228").**

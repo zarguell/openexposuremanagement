@@ -7,8 +7,9 @@ import (
 
 // entityToTable maps entity types to their actual database table/view names
 var entityToTable = map[string]string{
-	"findings":        "findings",        // Uses the "findings" view
-	"assets":          "assets_extended", // Uses the "assets_extended" view
+	"findings":            "findings",            // Uses the "findings" view
+	"assets":              "assets_extended",     // Uses the "assets_extended" view
+	"software_inventory":  "software_inventory", // Uses the "software_inventory" view
 }
 
 // Translator converts Query objects to SQL

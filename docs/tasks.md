@@ -309,6 +309,81 @@ Daily scheduled TI sync plus manual refresh and status display; reset context af
 
 ***
 
+## Milestone: Software Inventory (CPE-based asset software tracking)
+Track software installed on assets using CPE identification, support queries joining assets, software, and findings; reset context after this milestone.
+
+- [ ] Task: Create software catalog and asset_software tables
+  - **Description:** Implement `software` table with CPE-based identification and `asset_software` junction table for current-state tracking.
+  - **Acceptance criteria:** `software.cpe_string` is unique; `asset_software` has UNIQUE(tenant_id, asset_id, software_id); indexes support query patterns.
+  - **Validation command:** `make migrate-up && psql "$DATABASE_URL" -c "\d software" && psql "$DATABASE_URL" -c "\d asset_software"`
+  - **Dependencies:** Database schema & migrations → Create asset tables & identifier indexes
+  - **Estimated tokens:** 2800
+
+- [ ] Task: Create materialized view for software+asset queries
+  - **Description:** Implement `mv_asset_software_summary` materialized view with unique index to support concurrent refresh for dashboard-style queries.
+  - **Acceptance criteria:** View populates; `REFRESH MATERIALIZED VIEW CONCURRENTLY` succeeds; query performance acceptable.
+  - **Validation command:** `psql "$DATABASE_URL" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_asset_software_summary;"`
+  - **Dependencies:** Create software catalog and asset_software tables
+  - **Estimated tokens:** 2200
+
+- [ ] Task: Implement CPE normalization engine
+  - **Description:** Build `internal/software/normalizer.go` with CPE 2.3 construction from vendor/product/version/edition, vendor normalization maps, and validation.
+  - **Acceptance criteria:** Generates valid CPE 2.3 strings; normalizes common vendor names; unit tests cover edge cases (missing fields, special chars).
+  - **Validation command:** `go test ./internal/software/...`
+  - **Dependencies:** Create software catalog and asset_software tables
+  - **Estimated tokens:** 3000
+
+- [ ] Task: Extend ingestion payload for software inventory
+  - **Description:** Add `installed_software` array to `internal/ingest/payload.go` with vendor, product, version, edition, CPE, install_path fields.
+  - **Acceptance criteria:** Payload validation accepts software array; supports software-only, findings-only, or combined payloads; tests with realistic scanner data.
+  - **Validation command:** `go test ./internal/ingest/...`
+  - **Dependencies:** VM ingestion pipeline → Define ingestion payload schema & validation
+  - **Estimated tokens:** 2400
+
+- [ ] Task: Implement software upsert in ingestion pipeline
+  - **Description:** Extend `internal/ingest/processor.go` to normalize CPE, upsert to `software` table, upsert to `asset_software`, and delete unseen software after payload processing.
+  - **Acceptance criteria:** Idempotent re-ingestion; updates `last_seen_at`; deletes software not in latest scan; integration tests verify end-to-end flow.
+  - **Validation command:** `go test ./internal/ingest/... -run TestSoftwareIngestion`
+  - **Dependencies:** Implement CPE normalization engine; Extend ingestion payload for software inventory
+  - **Estimated tokens:** 3200
+
+- [ ] Task: Implement software repository layer
+  - **Description:** Create `internal/software/repository.go` with CRUD operations for software catalog and asset_software relationships.
+  - **Acceptance criteria:** Repository methods covered by unit/integration tests; supports tenant-scoped queries; handles upserts and deletions.
+  - **Validation command:** `go test ./internal/software/...`
+  - **Dependencies:** Create software catalog and asset_software tables
+  - **Estimated tokens:** 2600
+
+- [ ] Task: Implement GET /api/v1/software endpoints
+  - **Description:** Add `GET /software` (catalog browser with filters) and `GET /software/{id}` (details + affected assets + related findings).
+  - **Acceptance criteria:** Returns paginated software list; filters by vendor/product/version/CPE; includes install counts and severity summary.
+  - **Validation command:** `go test ./... && curl -sf http://localhost:8080/api/v1/software`
+  - **Dependencies:** Implement software repository layer; Go API foundation → Implement RBAC middleware (admin/analyst/viewer)
+  - **Estimated tokens:** 2800
+
+- [ ] Task: Extend GET /api/v1/assets/{id} to include installed software
+  - **Description:** Modify asset detail endpoint to return `software` array with CPE, title_formatted, first_seen_at, last_seen_at.
+  - **Acceptance criteria:** Response includes software installed on asset; tenant scoping enforced; tests verify join performance.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** Query APIs → Implement GET /assets/{id}; Implement software upsert in ingestion pipeline
+  - **Estimated tokens:** 2200
+
+- [ ] Task: Integrate software filters into query framework
+  - **Description:** Extend JSON query parser to support `software` clause (vendor, product, version, CPE filters) and compose with findings/asset/intel filters.
+  - **Acceptance criteria:** Queries like `{"AND": [{"software": {"product": "log4j"}}, {"findings": {"cve": "CVE-2021-44228"}}]}` execute correctly; SQL joins are efficient.
+  - **Validation command:** `go test ./internal/query/...`
+  - **Dependencies:** Query APIs milestone; Implement software repository layer
+  - **Estimated tokens:** 3000
+
+- [ ] Task: Milestone refactor & duplication pass
+  - **Description:** Consolidate software query logic, CPE normalization, and upsert operations; reduce duplication between software and finding ingestion paths.
+  - **Acceptance criteria:** Tests pass; lint passes; no duplicated normalization or upsert logic.
+  - **Validation command:** `go test ./...`
+  - **Dependencies:** All tasks in "Software Inventory"
+  - **Estimated tokens:** 1800
+
+***
+
 ## ~~Milestone: Suppressions (proposal/approval + recompute)~~
 **MOVED TO POST-MVP**
 

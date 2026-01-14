@@ -34,6 +34,31 @@ func TestValidator(t *testing.T) {
 		}
 	})
 
+	t.Run("valid software_inventory query", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "vendor", Operator: "eq", Value: "Adobe"},
+				{Field: "product_name", Operator: "like", Value: "Reader"},
+			},
+		}
+		err := v.Validate("software_inventory", q)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("invalid field for software_inventory", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "invalid_field", Operator: "eq", Value: "test"},
+			},
+		}
+		err := v.Validate("software_inventory", q)
+		if err == nil {
+			t.Error("expected error for invalid field")
+		}
+	})
+
 	t.Run("invalid field for findings", func(t *testing.T) {
 		q := &query.Query{
 			Filters: []query.Filter{

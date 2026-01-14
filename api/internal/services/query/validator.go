@@ -9,6 +9,7 @@ import (
 // These fields must match the columns in the database views:
 // - findings: uses the "findings" view which joins finding_instances, finding_definitions, assets, and intel_cve
 // - assets: uses the "assets_extended" view which joins assets with asset_identifiers
+// - software_inventory: uses the "software_inventory" view which joins asset_software, software, and assets
 var allowedFields = map[string]map[string]bool{
 	"findings": {
 		"id":                 true,
@@ -49,6 +50,28 @@ var allowedFields = map[string]map[string]bool{
 		"hostname_norm":  true,
 		"shortname_norm": true,
 		"ipv4":           true,
+	},
+	"software_inventory": {
+		"id":              true,
+		"tenant_id":       true,
+		"asset_id":        true,
+		"software_id":     true,
+		"source":          true,
+		"install_path":    true,
+		"first_seen_at":   true,
+		"last_seen_at":    true,
+		"created_at":      true,
+		"updated_at":      true,
+		"cpe_string":      true,
+		"vendor":          true,
+		"product_name":    true,
+		"version":         true,
+		"edition":         true,
+		"target_hw":       true,
+		"lang":            true,
+		"title_formatted": true,
+		"asset_name":      true,
+		"asset_is_active": true,
 	},
 }
 

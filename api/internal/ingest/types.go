@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/openexposuremanagement/oem/internal/software"
 )
 
 // VMFindingsPayload represents the ingestion payload for VM findings
@@ -40,6 +42,8 @@ type VMAsset struct {
 	IPAddresses []string `json:"ip_addresses,omitempty"`
 	// Whether this asset has a static IP (for conditional IP matching)
 	StaticIP bool `json:"static_ip,omitempty"`
+	// Installed software (optional, for software inventory)
+	InstalledSoftware []InstalledSoftware `json:"installed_software,omitempty"`
 }
 
 // VMFindingDetails represents finding definition details
@@ -148,6 +152,17 @@ func validateAsset(asset *VMAsset) error {
 		}
 	}
 
+	// Validate installed software if provided
+	for i, sw := range asset.InstalledSoftware {
+		if err := sw.Validate(); err != nil {
+			return ValidationError{
+				Field:   "asset.installed_software",
+				Message: fmt.Sprintf("invalid software at index %d: %s", i, err.Error()),
+				Index:   &i,
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -213,4 +228,50 @@ func (e ValidationError) Error() string {
 // Unwrap returns the underlying error for error chaining
 func (e ValidationError) Unwrap() error {
 	return ErrValidation
+}
+
+// InstalledSoftware represents a software product installed on an asset
+type InstalledSoftware struct {
+	// Software identification
+	Vendor  string `json:"vendor,omitempty"`
+	Product string `json:"product,omitempty"`
+	Version string `json:"version,omitempty"`
+	Edition string `json:"edition,omitempty"`
+	// CPE string (if provided by scanner)
+	CPE string `json:"cpe,omitempty"`
+	// Install location (optional)
+	InstallPath string `json:"install_path,omitempty"`
+}
+
+// Validate performs validation on installed software
+func (s *InstalledSoftware) Validate() error {
+	// Must have at least vendor and product
+	if s.Vendor == "" && s.Product == "" {
+		return ValidationError{
+			Field:   "software",
+			Message: "software must have at least vendor or product",
+		}
+	}
+
+	return nil
+}
+
+// GetCPE returns the CPE string, using the provided CPE if valid, otherwise generating one
+func (s *InstalledSoftware) GetCPE() string {
+	return software.NormalizeToCPE(s.Vendor, s.Product, s.Version, s.Edition, s.CPE)
+}
+
+// GetFormattedTitle returns a human-readable title for the software
+func (s *InstalledSoftware) GetFormattedTitle() string {
+	return software.FormatTitle(s.Vendor, s.Product, s.Version, s.Edition)
+}
+
+// SoftwareUpsertResult represents the result of upserting software for an asset
+type SoftwareUpsertResult struct {
+	TotalSoftware    int `json:"total_software"`
+	SoftwareUpserted int `json:"software_upserted"`
+	SoftwareCreated  int `json:"software_created"`
+	RelationsCreated int `json:"relations_created"`
+	RelationsUpdated int `json:"relations_updated"`
+	RelationsDeleted int `json:"relations_deleted"`
 }

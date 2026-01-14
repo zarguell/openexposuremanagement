@@ -115,6 +115,28 @@ func processVMFindings(ctx context.Context, db *sqlx.DB, tenantID int64, source 
 
 		summary.FindingsUpserted++
 
+		// 4. Process installed software (if present)
+		if len(finding.Asset.InstalledSoftware) > 0 {
+			softwareResult, err := ingest.UpsertSoftwareForAsset(ctx, db, tenantID, assetResult.Asset.ID, finding.Asset.InstalledSoftware, source)
+			if err != nil {
+				return nil, wrapFindingError(i, "software", err)
+			}
+
+			summary.SoftwareUpserted += softwareResult.SoftwareUpserted
+			summary.SoftwareCreated += softwareResult.SoftwareCreated
+			summary.SoftwareRelationsCreated += softwareResult.RelationsCreated
+			summary.SoftwareRelationsUpdated += softwareResult.RelationsUpdated
+			summary.SoftwareRelationsDeleted += softwareResult.RelationsDeleted
+
+			log.Info().
+				Int("total_software", softwareResult.TotalSoftware).
+				Int("software_created", softwareResult.SoftwareCreated).
+				Int("relations_created", softwareResult.RelationsCreated).
+				Int("relations_deleted", softwareResult.RelationsDeleted).
+				Int("index", i).
+				Msg("Successfully processed software")
+		}
+
 		log.Info().
 			Int64("asset_id", assetResult.Asset.ID).
 			Str("definition_uid", definitionUID).
@@ -138,11 +160,16 @@ func wrapFindingError(index int, operation string, err error) error {
 
 // IngestSummary represents the summary of ingestion results
 type IngestSummary struct {
-	TotalFindings        int `json:"total_findings"`
-	AssetsCreated        int `json:"assets_created"`
-	AssetsUpdated        int `json:"assets_updated"`
-	DefinitionsProcessed int `json:"definitions_processed"`
-	FindingsUpserted     int `json:"findings_upserted"`
+	TotalFindings          int `json:"total_findings"`
+	AssetsCreated          int `json:"assets_created"`
+	AssetsUpdated          int `json:"assets_updated"`
+	DefinitionsProcessed   int `json:"definitions_processed"`
+	FindingsUpserted       int `json:"findings_upserted"`
+	SoftwareUpserted       int `json:"software_upserted"`
+	SoftwareCreated        int `json:"software_created"`
+	SoftwareRelationsCreated int `json:"software_relations_created"`
+	SoftwareRelationsUpdated int `json:"software_relations_updated"`
+	SoftwareRelationsDeleted int `json:"software_relations_deleted"`
 }
 
 // respondWithIngestSuccess sends a successful ingestion response

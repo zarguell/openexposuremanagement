@@ -173,13 +173,53 @@ export const apiClient = {
   },
 
   // Query Framework API
-  async queryExecute(entity: 'findings' | 'assets', query: any) {
+  async queryExecute(entity: 'findings' | 'assets' | 'software_inventory', query: any) {
     const response = await authenticatedFetch(`/v1/query/${entity}`, {
       method: 'POST',
       body: JSON.stringify(query),
     });
     if (!response.ok) {
       throw new Error(`Failed to execute query: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  // Software API
+  async getSoftware(params?: {
+    vendor?: string;
+    product?: string;
+    version?: string;
+    cpe?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.vendor) searchParams.set('vendor', params.vendor);
+    if (params?.product) searchParams.set('product', params.product);
+    if (params?.version) searchParams.set('version', params.version);
+    if (params?.cpe) searchParams.set('cpe', params.cpe);
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+    const response = await authenticatedFetch(`/v1/software?${searchParams}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch software: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getSoftwareById(id: number) {
+    const response = await authenticatedFetch(`/v1/software/${id}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch software: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getSoftwareForAsset(assetId: number) {
+    const response = await authenticatedFetch(`/v1/assets/${assetId}/software`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch software for asset: ${response.statusText}`);
     }
     return response.json();
   },

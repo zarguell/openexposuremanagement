@@ -56,6 +56,10 @@ func (s *Server) registerRoutes() {
 	// Findings endpoints
 	apiV1.HandleFunc("/findings", handlers.RequireAuth(handlers.ListFindings(s.db)))
 
+	// Software endpoints
+	apiV1.HandleFunc("/software", handlers.RequireAuth(handlers.GetSoftwareCatalog(s.db)))
+	apiV1.HandleFunc("/software/", handlers.RequireAuth(handlers.GetSoftwareByID(s.db)))
+
 	// Query endpoints (require auth)
 	var queryExecutor query.QueryExecutor = query.NewExecutor(s.db)
 	// Wrap executor with logging in development mode or when log level is debug
@@ -65,6 +69,7 @@ func (s *Server) registerRoutes() {
 	queryHandler := handlers.NewQueryHandler(queryExecutor)
 	apiV1.HandleFunc("/query/findings", handlers.RequireAuth(queryHandler.QueryFindings))
 	apiV1.HandleFunc("/query/assets", handlers.RequireAuth(queryHandler.QueryAssets))
+	apiV1.HandleFunc("/query/software_inventory", handlers.RequireAuth(queryHandler.QuerySoftwareInventory))
 
 	// Saved query detail endpoints with name parameter (stubs for next task)
 	// NOTE: Must register /query/saved/ before /query/saved to avoid pattern conflicts

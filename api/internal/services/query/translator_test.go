@@ -31,6 +31,25 @@ func TestTranslator(t *testing.T) {
 		}
 	})
 
+	t.Run("software_inventory query", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "vendor", Operator: "eq", Value: "Adobe"},
+				{Field: "product_name", Operator: "like", Value: "Reader"},
+			},
+		}
+		sql, args, err := translator.Translate("software_inventory", q)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !contains(sql, "FROM software_inventory") {
+			t.Error("SQL should query software_inventory view")
+		}
+		if len(args) != 2 {
+			t.Errorf("expected 2 args, got %d", len(args))
+		}
+	})
+
 	t.Run("filter with in operator", func(t *testing.T) {
 		q := &query.Query{
 			Filters: []query.Filter{

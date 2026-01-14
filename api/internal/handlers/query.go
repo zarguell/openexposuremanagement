@@ -51,6 +51,12 @@ func (h *QueryHandler) QueryAssets(w http.ResponseWriter, r *http.Request) {
 	h.executeQuery(w, r, requestID, "assets")
 }
 
+// QuerySoftwareInventory handles POST /api/v1/query/software_inventory
+func (h *QueryHandler) QuerySoftwareInventory(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+	h.executeQuery(w, r, requestID, "software_inventory")
+}
+
 // executeQuery executes a query against the specified entity type
 func (h *QueryHandler) executeQuery(w http.ResponseWriter, r *http.Request, requestID string, entityType string) {
 	// Get user context from auth middleware

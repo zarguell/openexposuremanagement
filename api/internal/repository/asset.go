@@ -254,10 +254,11 @@ func (r *AssetRepository) List(ctx context.Context, params AssetListParams) (*As
 // AssetDetail represents an asset with its identifiers and finding counts
 type AssetDetail struct {
 	Asset
-	Identifiers   []AssetIdentifier `json:"identifiers"`
-	OpenFindings  int               `json:"open_findings"`
-	FixedFindings int               `json:"fixed_findings"`
-	TotalFindings int               `json:"total_findings"`
+	Identifiers   []AssetIdentifier   `json:"identifiers"`
+	Software      []AssetSoftware     `json:"software,omitempty"`
+	OpenFindings  int                 `json:"open_findings"`
+	FixedFindings int                 `json:"fixed_findings"`
+	TotalFindings int                 `json:"total_findings"`
 }
 
 // GetWithDetails retrieves an asset with its identifiers and finding counts
@@ -285,9 +286,16 @@ func (r *AssetRepository) GetWithDetails(ctx context.Context, tenantID, assetID 
 		return nil, err
 	}
 
+	// Get software for asset
+	software, err := r.getSoftwareForAsset(ctx, tenantID, assetID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AssetDetail{
 		Asset:         *asset,
 		Identifiers:   identifiers,
+		Software:      software,
 		OpenFindings:  openCount,
 		FixedFindings: fixedCount,
 		TotalFindings: openCount + fixedCount,
@@ -325,4 +333,38 @@ func (r *AssetRepository) getFindingCounts(ctx context.Context, assetID int64) (
 	}
 
 	return open, fixed, rows.Err()
+}
+
+// getSoftwareForAsset retrieves software installed on the asset
+func (r *AssetRepository) getSoftwareForAsset(ctx context.Context, tenantID, assetID int64) ([]AssetSoftware, error) {
+	query := `
+		SELECT asw.id,
+		       asw.tenant_id,
+		       asw.asset_id,
+		       asw.software_id,
+		       asw.source,
+		       asw.install_path,
+		       asw.first_seen_at,
+		       asw.last_seen_at,
+		       asw.created_at,
+		       asw.updated_at,
+		       s.cpe_string,
+		       s.vendor,
+		       s.product_name,
+		       s.version,
+		       s.edition,
+		       s.title_formatted
+		FROM asset_software asw
+		JOIN software s ON s.id = asw.software_id
+		WHERE asw.tenant_id = $1 AND asw.asset_id = $2
+		ORDER BY s.vendor, s.product_name
+	`
+
+	var software []AssetSoftware
+	err := r.db.SelectContext(ctx, &software, query, tenantID, assetID)
+	if err != nil {
+		return nil, err
+	}
+
+	return software, nil
 }
