@@ -55,7 +55,11 @@ func (s *Server) registerRoutes() {
 	apiV1.HandleFunc("/findings", handlers.RequireAuth(handlers.ListFindings(s.db)))
 
 	// Query endpoints (require auth)
-	queryExecutor := query.NewExecutor(s.db)
+	var queryExecutor query.QueryExecutor = query.NewExecutor(s.db)
+	// Wrap executor with logging in development mode or when log level is debug
+	if s.cfg.LogLevel == 0 || s.cfg.IsDevelopment() {
+		queryExecutor = query.WithLogging(queryExecutor, log.Logger)
+	}
 	queryHandler := handlers.NewQueryHandler(queryExecutor)
 	apiV1.HandleFunc("/query/findings", handlers.RequireAuth(queryHandler.QueryFindings))
 	apiV1.HandleFunc("/query/assets", handlers.RequireAuth(queryHandler.QueryAssets))

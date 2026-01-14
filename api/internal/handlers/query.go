@@ -15,6 +15,7 @@ import (
 )
 
 // ExecutorInterface defines the query executor interface (matches spec)
+// Note: Using query.QueryExecutor interface for consistency with query service
 type ExecutorInterface interface {
 	Execute(ctx context.Context, tenantID string, entityType string, q *query.Query) (*query.QueryResult, error)
 }
