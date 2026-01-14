@@ -1,0 +1,336 @@
+{
+  "source": "tenable",
+  "scanner": "Nessus",
+  "scanned_at": "2024-01-15T10:00:00Z",
+  "findings": [
+    {
+      "asset": {
+        "hostname": "web-server-01.example.com",
+        "ip_addresses": ["192.168.1.100", "10.0.1.100"],
+        "external_ids": {
+          "aws:instance_id": "i-1234567890abcdef0",
+          "aws:region": "us-east-1"
+        },
+        "installed_software": [
+          {
+            "vendor": "Apache",
+            "product": "HTTP Server",
+            "version": "2.4.41",
+            "cpe": "cpe:2.3:a:apache:http_server:2.4.41:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "OpenSSL",
+            "product": "OpenSSL",
+            "version": "1.0.1f",
+            "cpe": "cpe:2.3:a:openssl:openssl:1.0.1f:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Python",
+            "product": "Python",
+            "version": "3.8.10",
+            "cpe": "cpe:2.3:a:python:python:3.8.10:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "OpenSSH",
+            "product": "OpenSSH",
+            "version": "8.2p1",
+            "cpe": "cpe:2.3:a:openbsd:openssh:8.2p1:*:*:*:*:*:*:*"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "12345",
+        "title": "Apache HTTP Server Multiple Vulnerabilities",
+        "severity": "High",
+        "cves": ["CVE-2021-44228", "CVE-2021-45046"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/12345"
+        ],
+        "description": "Multiple vulnerabilities in Apache HTTP Server",
+        "solution": "Upgrade to latest version or apply patches"
+      },
+      "status": "open",
+      "first_found": "2024-01-10T08:00:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 443,
+        "protocol": "https",
+        "service": "Apache/2.4.41"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "web-server-01.example.com",
+        "ip_addresses": ["192.168.1.100", "10.0.1.100"],
+        "external_ids": {
+          "aws:instance_id": "i-1234567890abcdef0",
+          "aws:region": "us-east-1"
+        },
+        "installed_software": [
+          {
+            "vendor": "Apache",
+            "product": "HTTP Server",
+            "version": "2.4.41",
+            "cpe": "cpe:2.3:a:apache:http_server:2.4.41:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "OpenSSL",
+            "product": "OpenSSL",
+            "version": "1.0.1f",
+            "cpe": "cpe:2.3:a:openssl:openssl:1.0.1f:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Python",
+            "product": "Python",
+            "version": "3.8.10",
+            "cpe": "cpe:2.3:a:python:python:3.8.10:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "OpenSSH",
+            "product": "OpenSSH",
+            "version": "8.2p1",
+            "cpe": "cpe:2.3:a:openbsd:openssh:8.2p1:*:*:*:*:*:*:*"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "67890",
+        "title": "OpenSSL Heartbleed Vulnerability",
+        "severity": "Critical",
+        "cves": ["CVE-2014-0160"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/67890"
+        ],
+        "description": "OpenSSL Heartbleed information disclosure vulnerability",
+        "solution": "Upgrade OpenSSL to version 1.0.1g or later"
+      },
+      "status": "open",
+      "first_found": "2024-01-12T14:30:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 443,
+        "protocol": "https",
+        "version": "OpenSSL/1.0.1f"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "database-server-01.example.com",
+        "ip_addresses": ["192.168.2.50", "10.0.2.50"],
+        "external_ids": {
+          "aws:instance_id": "i-0987654321fedcba0",
+          "aws:region": "us-east-1"
+        },
+        "installed_software": [
+          {
+            "vendor": "PostgreSQL",
+            "product": "PostgreSQL",
+            "version": "13.4",
+            "cpe": "cpe:2.3:a:postgresql:postgresql:13.4:*:*:*:*:*:*:*",
+            "install_path": "/usr/lib/postgresql/13/bin"
+          },
+          {
+            "vendor": "OpenSSL",
+            "product": "OpenSSL",
+            "version": "1.1.1k",
+            "cpe": "cpe:2.3:a:openssl:openssl:1.1.1k:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Linux",
+            "product": "Linux Kernel",
+            "version": "5.4.0",
+            "cpe": "cpe:2.3:o:linux:linux_kernel:5.4.0:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "GNU",
+            "product": "glibc",
+            "version": "2.31",
+            "cpe": "cpe:2.3:a:gnu:glibc:2.31:*:*:*:*:*:*:*"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "54321",
+        "title": "PostgreSQL Authentication Bypass",
+        "severity": "High",
+        "cves": ["CVE-2022-1552"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/54321"
+        ],
+        "description": "PostgreSQL authentication bypass vulnerability",
+        "solution": "Apply security patches or upgrade PostgreSQL"
+      },
+      "status": "open",
+      "first_found": "2024-01-13T16:45:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 5432,
+        "protocol": "tcp",
+        "version": "PostgreSQL/13.4"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "api-gateway-01.example.com",
+        "ip_addresses": ["192.168.3.25", "10.0.3.25"],
+        "external_ids": {
+          "aws:instance_id": "i-abcdef12345678901",
+          "aws:region": "us-west-2"
+        },
+        "installed_software": [
+          {
+            "vendor": "F5",
+            "product": "NGINX",
+            "version": "1.20.1",
+            "cpe": "cpe:2.3:a:f5:nginx:1.20.1:*:*:*:*:*:*:*",
+            "install_path": "/usr/sbin/nginx"
+          },
+          {
+            "vendor": "OpenSSL",
+            "product": "OpenSSL",
+            "version": "1.1.1",
+            "cpe": "cpe:2.3:a:openssl:openssl:1.1.1:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Linux",
+            "product": "Linux Kernel",
+            "version": "5.10.0",
+            "cpe": "cpe:2.3:o:linux:linux_kernel:5.10.0:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Amazon",
+            "product": "AWS Tools",
+            "version": "2.0.0",
+            "cpe": "cpe:2.3:a:amazon:aws_tools:2.0.0:*:*:*:*:*:*:*",
+            "install_path": "/usr/local/bin/aws"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "98765",
+        "title": "Nginx HTTP Request Smuggling",
+        "severity": "Medium",
+        "cves": ["CVE-2023-44487"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/98765"
+        ],
+        "description": "HTTP request smuggling vulnerability in Nginx",
+        "solution": "Update Nginx configuration and apply patches"
+      },
+      "status": "open",
+      "first_found": "2024-01-14T09:15:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 80,
+        "protocol": "http",
+        "server": "nginx/1.20.1"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "app-server-01.example.com",
+        "ip_addresses": ["192.168.4.75", "10.0.4.75"],
+        "external_ids": {
+          "aws:instance_id": "i-fedcba09876543210",
+          "aws:region": "eu-west-1"
+        },
+        "installed_software": [
+          {
+            "vendor": "Oracle",
+            "product": "Java",
+            "version": "11.0.12",
+            "edition": "Standard Edition",
+            "cpe": "cpe:2.3:a:oracle:java_se:11.0.12:*:*:*:*:*:*:*",
+            "install_path": "/usr/lib/jvm/java-11-openjdk"
+          },
+          {
+            "vendor": "Apache",
+            "product": "Tomcat",
+            "version": "9.0.50",
+            "cpe": "cpe:2.3:a:apache:tomcat:9.0.50:*:*:*:*:*:*:*",
+            "install_path": "/opt/tomcat"
+          },
+          {
+            "vendor": "OpenJDK",
+            "product": "OpenJDK",
+            "version": "11.0.12",
+            "cpe": "cpe:2.3:a:openjdk:openjdk:11.0.12:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Linux",
+            "product": "Linux Kernel",
+            "version": "5.4.0",
+            "cpe": "cpe:2.3:o:linux:linux_kernel:5.4.0:*:*:*:*:*:*:*"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "11111",
+        "title": "Apache Tomcat Information Disclosure",
+        "severity": "Medium",
+        "cves": ["CVE-2022-23181"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/11111"
+        ],
+        "description": "Information disclosure vulnerability in Tomcat",
+        "solution": "Upgrade to Apache Tomcat 9.0.62 or later"
+      },
+      "status": "open",
+      "first_found": "2024-01-11T11:20:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 8080,
+        "protocol": "http",
+        "server": "Apache-Coyote/1.1"
+      }
+    },
+    {
+      "asset": {
+        "hostname": "file-server-01.example.com",
+        "ip_addresses": ["192.168.5.100", "10.0.5.100"],
+        "external_ids": {
+          "aws:instance_id": "i-55555555555555555",
+          "aws:region": "ap-southeast-1"
+        },
+        "installed_software": [
+          {
+            "vendor": "Microsoft",
+            "product": "Windows Server",
+            "version": "2019",
+            "cpe": "cpe:2.3:o:microsoft:windows_server:2019:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "OpenSSH",
+            "product": "OpenSSH for Windows",
+            "version": "8.1.0.0",
+            "cpe": "cpe:2.3:a:openssh:openssh_for_windows:8.1.0.0:*:*:*:*:*:*:*"
+          },
+          {
+            "vendor": "Microsoft",
+            "product": ".NET Framework",
+            "version": "4.8",
+            "cpe": "cpe:2.3:a:microsoft:.net_framework:4.8:*:*:*:*:*:*:*"
+          }
+        ]
+      },
+      "finding": {
+        "definition_id": "22222",
+        "title": "Windows SMBv3 Compression Vulnerability",
+        "severity": "Critical",
+        "cves": ["CVE-2020-0796"],
+        "references": [
+          "https://www.tenable.com/plugins/nessus/22222"
+        ],
+        "description": "Remote code execution vulnerability in SMBv3",
+        "solution": "Apply Microsoft security update"
+      },
+      "status": "open",
+      "first_found": "2024-01-09T07:30:00Z",
+      "last_found": "2024-01-15T10:00:00Z",
+      "evidence": {
+        "port": 445,
+        "protocol": "smb"
+      }
+    }
+  ]
+}
