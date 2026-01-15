@@ -3,11 +3,11 @@ package query
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 )
 
 // MaxQueryLimit is the maximum number of rows allowed in a single query
@@ -60,9 +60,12 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 		return nil, fmt.Errorf("limit exceeds maximum of %d", MaxQueryLimit)
 	}
 
-	// Add timeout to context
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
-	defer cancel()
+	// Only add timeout if parent doesn't have a deadline
+	var cancel context.CancelFunc
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		ctx, cancel = context.WithTimeout(ctx, QueryTimeout)
+		defer cancel()
+	}
 
 	// Translate to SQL
 	sql, args, err := e.translator.Translate(entityType, q)
@@ -127,8 +130,12 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 
 	// Log slow queries
 	if executionTime > SlowQueryThreshold {
-		log.Printf("[SLOW QUERY] Entity: %s, Duration: %v, Tenant: %s, SQL: %s",
-			entityType, executionTime, tenantID, sql)
+		log.Warn().
+			Str("entity_type", entityType).
+			Str("tenant_id", tenantID).
+			Dur("duration_ms", executionTime).
+			Str("sql", sql).
+			Msg("slow query detected")
 	}
 
 	return &QueryResult{

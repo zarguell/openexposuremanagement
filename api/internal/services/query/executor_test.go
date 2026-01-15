@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ func TestExecutor_MaxLimitValidation(t *testing.T) {
 	executor := NewExecutor(nil) // DB not needed for validation test
 
 	t.Run("rejects limit exceeding maximum", func(t *testing.T) {
-		limit := 5001
+		limit := MaxQueryLimit + 1
 		q := &Query{
 			Filters: []Filter{
 				{Field: "effective_status", Operator: "eq", Value: "open"},
@@ -24,13 +25,14 @@ func TestExecutor_MaxLimitValidation(t *testing.T) {
 			t.Fatal("expected error for limit exceeding maximum, got nil")
 		}
 
-		if err.Error() != "limit exceeds maximum of 5000" {
-			t.Errorf("unexpected error message: %v", err)
+		expectedMsg := fmt.Sprintf("limit exceeds maximum of %d", MaxQueryLimit)
+		if err.Error() != expectedMsg {
+			t.Errorf("unexpected error message: %v, want %s", err, expectedMsg)
 		}
 	})
 
 	t.Run("accepts limit at maximum", func(t *testing.T) {
-		limit := 5000
+		limit := MaxQueryLimit
 		q := &Query{
 			Filters: []Filter{
 				{Field: "effective_status", Operator: "eq", Value: "open"},
@@ -48,7 +50,8 @@ func TestExecutor_MaxLimitValidation(t *testing.T) {
 		// Will fail at DB execution (nil DB), but should pass validation
 		_, err := executor.Execute(context.Background(), "test-tenant", "findings", q)
 		// We expect an error (nil DB panic), but NOT the limit error
-		if err != nil && err.Error() == "limit exceeds maximum of 5000" {
+		expectedMsg := fmt.Sprintf("limit exceeds maximum of %d", MaxQueryLimit)
+		if err != nil && err.Error() == expectedMsg {
 			t.Error("limit at maximum should be accepted")
 		}
 	})
@@ -72,7 +75,8 @@ func TestExecutor_MaxLimitValidation(t *testing.T) {
 		// Will fail at DB execution (nil DB), but should pass validation
 		_, err := executor.Execute(context.Background(), "test-tenant", "findings", q)
 		// We expect an error (nil DB panic), but NOT the limit error
-		if err != nil && err.Error() == "limit exceeds maximum of 5000" {
+		expectedMsg := fmt.Sprintf("limit exceeds maximum of %d", MaxQueryLimit)
+		if err != nil && err.Error() == expectedMsg {
 			t.Error("limit below maximum should be accepted")
 		}
 	})
@@ -82,7 +86,7 @@ func TestQueryGuardrails(t *testing.T) {
 	executor := NewExecutor(nil) // DB not needed for validation tests
 
 	t.Run("enforces 5000 row limit", func(t *testing.T) {
-		limit := 6000 // exceeds max
+		limit := MaxQueryLimit + 1000 // exceeds max
 		q := &Query{
 			Filters: []Filter{{Field: "is_active", Operator: "eq", Value: true}},
 			Limit:   &limit,
@@ -93,8 +97,12 @@ func TestQueryGuardrails(t *testing.T) {
 			t.Error("expected error for excessive limit, got nil")
 		}
 
+		expectedMsg := fmt.Sprintf("limit exceeds maximum of %d", MaxQueryLimit)
 		if err != nil && !strings.Contains(err.Error(), "limit exceeds maximum") {
 			t.Errorf("expected limit error, got: %v", err)
+		}
+		if err != nil && err.Error() != expectedMsg {
+			t.Errorf("expected error message %q, got %q", expectedMsg, err.Error())
 		}
 	})
 
