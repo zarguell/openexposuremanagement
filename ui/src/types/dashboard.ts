@@ -1,4 +1,4 @@
-import { Query } from './query';
+import { Query, UnifiedQuery } from './query';
 
 export interface DashboardWidget {
   id: string;
@@ -11,6 +11,19 @@ export interface DashboardWidget {
   color?: string;
   icon?: string;
   linkTo?: string;
+}
+
+// Unified query widget type for cross-entity correlation queries
+// NOTE: Disabled by default for performance reasons
+export interface DashboardUnifiedWidget {
+  id: string;
+  title: string;
+  type: 'metric';
+  query: UnifiedQuery;
+  color?: string;
+  icon?: string;
+  linkTo?: string;
+  disabled?: boolean; // When true, widget is not rendered
 }
 
 export interface DashboardConfig {

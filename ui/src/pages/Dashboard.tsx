@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useDashboardQueries } from '../hooks/useDashboardQueries';
-import { DEFAULT_DASHBOARD } from '../config/dashboard';
+import { DEFAULT_DASHBOARD, UNIFIED_QUERY_WIDGETS } from '../config/dashboard';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+// NOTE: Unified query widgets (UNIFIED_QUERY_WIDGETS) are available but disabled by default
+// for performance reasons. JOIN queries can be slow on large datasets.
+// To enable, set disabled: false in dashboard.ts and add them to the widgets array.
 
 function Dashboard() {
   const { results, isLoading, isError, widgets, errors } = useDashboardQueries(DEFAULT_DASHBOARD);

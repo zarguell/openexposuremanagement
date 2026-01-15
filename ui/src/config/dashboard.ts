@@ -1,5 +1,5 @@
-import { DashboardConfig } from '../types/dashboard';
-import { Query, Sort } from '../types/query';
+import { DashboardConfig, DashboardUnifiedWidget } from '../types/dashboard';
+import { Query, Sort, UnifiedQuery } from '../types/query';
 
 // Helper to create queries with proper typing
 const createQuery = (filters: Query['filters'], sort?: Sort[], limit?: number): Query => ({
@@ -8,6 +8,53 @@ const createQuery = (filters: Query['filters'], sort?: Sort[], limit?: number): 
   limit,
   offset: 0,
 });
+
+// Unified query widgets for cross-entity correlation
+// NOTE: DISABLED by default for performance - JOIN queries can be slow on large datasets
+// To enable, set disabled: false and add to the widgets array
+export const UNIFIED_QUERY_WIDGETS: DashboardUnifiedWidget[] = [
+  {
+    id: 'assets-missing-crowdstrike',
+    title: 'Assets Missing CrowdStrike',
+    type: 'metric',
+    query: {
+      primary_entity: 'assets',
+      join: {
+        entity: 'software_inventory',
+        type: 'left',
+        on: { primary: 'id', joined: 'asset_id' },
+      },
+      filters: [{ field: 'vendor', operator: 'neq', value: 'CrowdStrike' }],
+      limit: 50,
+    },
+    icon: '🔒',
+    color: '#f59e0b',
+    linkTo: '/unified-queries',
+    disabled: true, // Disabled by default - enable if needed
+  },
+  {
+    id: 'assets-with-exploitable-cves',
+    title: 'Assets with Exploitable CVEs',
+    type: 'metric',
+    query: {
+      primary_entity: 'assets',
+      join: {
+        entity: 'findings',
+        type: 'left',
+        on: { primary: 'id', joined: 'asset_id' },
+      },
+      filters: [
+        { field: 'is_kev', operator: 'eq', value: true },
+        { field: 'effective_status', operator: 'eq', value: 'open' },
+      ],
+      limit: 50,
+    },
+    icon: '⚡',
+    color: '#ef4444',
+    linkTo: '/unified-queries',
+    disabled: true, // Disabled by default - enable if needed
+  },
+];
 
 export const DEFAULT_DASHBOARD: DashboardConfig = {
   id: 'main',
