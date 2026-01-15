@@ -16,17 +16,31 @@ type Query struct {
 	Offset       *int          `json:"offset,omitempty"`
 }
 
+// UnifiedQuery represents a query with an explicit primary entity
+// Used by OQL translator to specify the target entity
+type UnifiedQuery struct {
+	PrimaryEntity string         `json:"primary_entity"`
+	Filters       []Filter       `json:"filters"`
+	Join          *Join          `json:"join,omitempty"`
+	Aggregations  []Aggregation  `json:"aggregations,omitempty"`
+	Sort          *Sort          `json:"sort,omitempty"`
+	Limit         int            `json:"limit,omitempty"`
+	Offset        int            `json:"offset,omitempty"`
+}
+
 // IntPtr returns a pointer to an int (helper for tests)
 func IntPtr(i int) *int {
 	return &i
 }
 
-// Filter represents a single filter condition
+// Filter represents a single filter condition or a logical group
 type Filter struct {
-	Field    string      `json:"field"`
-	Operator string      `json:"operator"`
-	Value    interface{} `json:"value"`
+	Field    string      `json:"field,omitempty"`
+	Operator string      `json:"operator,omitempty"`
+	Value    interface{} `json:"value,omitempty"`
 	Negate   bool        `json:"negate,omitempty"` // If true, negates the filter (NOT EXISTS for related entities)
+	Logic    string      `json:"logic,omitempty"`  // "and" or "or" for logical groups
+	Filters  []Filter    `json:"filters,omitempty"` // Nested filters for logical groups
 }
 
 // Aggregation represents an aggregation operation
