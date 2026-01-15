@@ -79,6 +79,7 @@ func (s *Server) registerRoutes() {
 	apiV1.HandleFunc("/query/unified", handlers.RequireAuth(queryHandler.QueryUnified))
 	apiV1.HandleFunc("/query/oql", handlers.RequireAuth(queryHandler.QueryOQL))
 	apiV1.HandleFunc("/query/oql/validate", handlers.RequireAuth(queryHandler.ValidateOQL))
+	apiV1.HandleFunc("/query/oql/explain", handlers.RequireAuth(queryHandler.ExplainOQL))
 
 	// Saved query detail endpoints with name parameter (stubs for next task)
 	// NOTE: Must register /query/saved/ before /query/saved to avoid pattern conflicts

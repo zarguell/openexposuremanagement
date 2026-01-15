@@ -532,6 +532,86 @@ func (h *QueryHandler) ValidateOQL(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ExplainOQL handles POST /api/v1/query/oql/explain
+// @Summary Explain OQL query translation
+// @Description Converts OQL to unified query JSON and generated SQL (for debugging/learning)
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body object {query: string} true "OQL query string"
+// @Success 200 {object} map[string]interface{} "Query explanation"
+// @Failure 400 {object} api.QueryError "Bad request or OQL parse error"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/oql/explain [post]
+func (h *QueryHandler) ExplainOQL(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+
+	// Parse request body
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Invalid request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Validate query field is present
+	if req.Query == "" {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Query is required",
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Parse OQL to JSON
+	jsonQuery, err := oql.ParseOQL(req.Query)
+	if err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "OQL_PARSE_ERROR",
+			Message: "Failed to parse OQL query",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Convert UnifiedQuery to Query
+	var q query.Query
+	if err := convertUnifiedQueryToQuery(jsonQuery, &q); err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "QUERY_CONVERSION_ERROR",
+			Message: "Failed to convert query",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Generate SQL (for debugging/learning)
+	_, args, err := h.translator.Translate("assets", &q)
+	if err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "TRANSLATION_ERROR",
+			Message: "Failed to translate query to SQL",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Return explanation
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"unified_query": jsonQuery,
+		"sql":           q, // Include the Query object which has SQL info
+		"args":          args,
+	})
+}
+
 // convertUnifiedQueryToQuery converts UnifiedQuery to Query
 func convertUnifiedQueryToQuery(uq *query.UnifiedQuery, q *query.Query) error {
 	// Convert filters
