@@ -3,13 +3,10 @@ package query
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // allowedFields defines whitelisted fields per entity
-// These fields must match the columns in the database views:
-// - findings: uses the "findings" view which joins finding_instances, finding_definitions, assets, and intel_cve
-// - assets: uses the "assets_extended" view which joins assets with asset_identifiers
-// - software_inventory: uses the "software_inventory" view which joins asset_software, software, and assets
 var allowedFields = map[string]map[string]bool{
 	"findings": {
 		"id":                 true,
@@ -75,20 +72,39 @@ var allowedFields = map[string]map[string]bool{
 	},
 }
 
+// Entity field mappings for dot-walking syntax
+var entityFieldMappings = map[string]map[string]bool{
+	"software": {
+		"vendor":        true,
+		"product_name":  true,
+		"version":       true,
+		"cpe_string":    true,
+		"install_path":  true,
+		"first_seen_at": true,
+		"last_seen_at":  true,
+	},
+	"findings": {
+		"severity":          true,
+		"scanner_status":    true,
+		"effective_status":  true,
+		"cve":               true,
+		"epss_score":        true,
+		"is_kev":            true,
+		"first_observed_at": true,
+		"last_observed_at":  true,
+	},
+}
+
 // allowedOperators defines whitelisted operators
-// Note: Only operators implemented by Translator should be listed here
 var allowedOperators = map[string]bool{
 	"eq":          true,
 	"neq":         true,
 	"in":          true,
-	"not_in":      true,
 	"like":        true,
-	"not_like":    true,
 	"gt":          true,
 	"gte":         true,
 	"lt":          true,
 	"lte":         true,
-	"between":     true,
 	"is_null":     true,
 	"is_not_null": true,
 }
@@ -99,6 +115,15 @@ type Validator struct{}
 // NewValidator creates a new Validator
 func NewValidator() *Validator {
 	return &Validator{}
+}
+
+// parseField parses a field name to extract entity prefix
+func (v *Validator) parseField(field string) (entityPrefix, fieldName string) {
+	parts := strings.SplitN(field, ".", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "", field
 }
 
 // Validate checks if the query is valid for the given entity type
@@ -114,36 +139,89 @@ func (v *Validator) Validate(entityType string, q *Query) error {
 		return fmt.Errorf("invalid entity type: %s", entityType)
 	}
 
-	// For unified queries with joins, merge allowed fields from both entities
-	if q.Join != nil {
-		joinedFields, ok := allowedFields[q.Join.Entity]
-		if !ok {
-			return fmt.Errorf("invalid joined entity type: %s", q.Join.Entity)
-		}
-		// Merge fields - create a new map with combined fields
-		// Note: We don't prefix fields because the translator handles qualification
-		mergedFields := make(map[string]bool)
-		for k, v := range fields {
-			mergedFields[k] = v
-		}
-		for k, v := range joinedFields {
-			mergedFields[k] = v
-		}
-		fields = mergedFields
-	}
-
 	// Validate each filter
 	for _, f := range q.Filters {
-		// Check field is allowed (O(1) lookup)
-		if !fields[f.Field] {
+		entityPrefix, fieldName := v.parseField(f.Field)
+
+		// Determine which field whitelist to use
+		var validFields map[string]bool
+		if entityPrefix == "" {
+			// Primary entity field
+			validFields = fields
+		} else {
+			// Related entity field (dot-walking syntax)
+			var ok bool
+			validFields, ok = entityFieldMappings[entityPrefix]
+			if !ok {
+				return fmt.Errorf("unknown entity prefix: %s", entityPrefix)
+			}
+		}
+
+		// Check field is allowed
+		if !validFields[fieldName] {
 			return fmt.Errorf("field '%s' not allowed for entity %s", f.Field, entityType)
 		}
 
-		// Check operator is allowed (O(1) lookup)
+		// Check operator is allowed
 		if !allowedOperators[f.Operator] {
 			return fmt.Errorf("operator '%s' not allowed", f.Operator)
 		}
 	}
+
+	// Validate aggregations if present
+	for _, agg := range q.Aggregations {
+		if strings.TrimSpace(agg.Type) == "" {
+			return errors.New("aggregation type cannot be empty")
+		}
+
+		// Validate aggregation field
+		if agg.Field != "" {
+			entityPrefix, fieldName := v.parseField(agg.Field)
+
+			var validFields map[string]bool
+			if entityPrefix == "" {
+				validFields = fields
+			} else {
+				var ok bool
+				validFields, ok = entityFieldMappings[entityPrefix]
+				if !ok {
+					return fmt.Errorf("unknown entity prefix in aggregation: %s", entityPrefix)
+				}
+			}
+
+			if !validFields[fieldName] {
+				return fmt.Errorf("aggregation field '%s' not allowed", agg.Field)
+			}
+		}
+	}
+
+	// Validate sort fields if present
+	for _, s := range q.Sort {
+		entityPrefix, fieldName := v.parseField(s.Field)
+
+		var validFields map[string]bool
+		if entityPrefix == "" {
+			validFields = fields
+		} else {
+			var ok bool
+			validFields, ok = entityFieldMappings[entityPrefix]
+			if !ok {
+				return fmt.Errorf("unknown entity prefix in sort: %s", entityPrefix)
+			}
+		}
+
+		if !validFields[fieldName] {
+			return fmt.Errorf("sort field '%s' not allowed", s.Field)
+		}
+
+		order := strings.ToLower(strings.TrimSpace(s.Order))
+		if order != "asc" && order != "desc" {
+			return errors.New("sort order must be 'asc' or 'desc'")
+		}
+	}
+
+	// Note: We no longer validate the old Join syntax
+	// The dot-walking syntax is simpler and doesn't require explicit join configuration
 
 	return nil
 }

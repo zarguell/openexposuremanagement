@@ -13,7 +13,6 @@ import Findings from './pages/Findings'
 import FindingsQuery from './pages/FindingsQuery'
 import Software from './pages/Software'
 import UnifiedQueries from './pages/UnifiedQueries'
-import ApiDocs from './pages/ApiDocs'
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -170,8 +169,10 @@ function AppContent() {
                   >
                     Unified Queries
                   </Link>
-                  <Link
-                    to="/api-docs"
+                  <a
+                    href="/swagger/"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                       fontSize: '0.875rem',
                       color: '#6b7280',
@@ -179,6 +180,7 @@ function AppContent() {
                       padding: '0.5rem',
                       borderRadius: '0.375rem',
                       transition: 'all 0.2s',
+                      cursor: 'pointer',
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.backgroundColor = '#f3f4f6';
@@ -190,7 +192,7 @@ function AppContent() {
                     }}
                   >
                     API Docs
-                  </Link>
+                  </a>
                 </nav>
               )}
             </div>
@@ -280,11 +282,6 @@ function AppContent() {
             <Route path="/unified-queries" element={
               <ProtectedRoute>
                 <UnifiedQueries />
-              </ProtectedRoute>
-            } />
-            <Route path="/api-docs" element={
-              <ProtectedRoute>
-                <ApiDocs />
               </ProtectedRoute>
             } />
           </Routes>

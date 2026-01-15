@@ -10,6 +10,16 @@ import (
 )
 
 // GetDashboard handles GET /dashboard
+// @Summary Get dashboard data
+// @Description Get dashboard statistics including asset counts, finding counts, and threat intel status
+// @Tags dashboard
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Dashboard data"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /dashboard [get]
 func GetDashboard(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -61,6 +71,16 @@ func GetDashboard(db *sqlx.DB) http.HandlerFunc {
 }
 
 // RefreshDashboardViews handles POST /dashboard/refresh
+// @Summary Refresh dashboard materialized views
+// @Description Manually refresh the materialized views used for dashboard statistics
+// @Tags dashboard
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string "Refresh status"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /dashboard/refresh [post]
 func RefreshDashboardViews(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -1,0 +1,1221 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/assets": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of assets with optional search query",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "summary": "List assets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query for hostname/IP",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Asset list with metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/assets/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get detailed information about a specific asset including installed software",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "summary": "Get asset by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Asset ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Asset details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Asset not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/assets/{id}/software": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get all software installed on a specific asset",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assets",
+                    "software"
+                ],
+                "summary": "Get software for asset",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Asset ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Software list for asset",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get dashboard statistics including asset counts, finding counts, and threat intel status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Get dashboard data",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Manually refresh the materialized views used for dashboard statistics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Refresh dashboard materialized views",
+                "responses": {
+                    "200": {
+                        "description": "Refresh status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/findings": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of findings with optional filters and threat intelligence enrichment",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "findings"
+                ],
+                "summary": "List findings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by scanner source",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by severity",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by effective status (open, fixed)",
+                        "name": "effective_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by CVE ID",
+                        "name": "cve",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by asset name",
+                        "name": "asset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Include threat intelligence data (NVD, EPSS, KEV)",
+                        "name": "include_intel",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Findings list with pagination",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ingest/vm/findings": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Ingest vulnerability findings from VM scanners (Tenable, Qualys, etc.)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ingestion"
+                ],
+                "summary": "Ingest VM findings",
+                "parameters": [
+                    {
+                        "description": "VM findings payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ingest.VMFindingsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ingest summary",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/query/assets": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Query assets with filters, aggregations, and sorting",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "query"
+                ],
+                "summary": "Query assets",
+                "parameters": [
+                    {
+                        "description": "Query object",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/query.Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    }
+                }
+            }
+        },
+        "/query/findings": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Query findings with filters, aggregations, and sorting",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "query"
+                ],
+                "summary": "Query findings",
+                "parameters": [
+                    {
+                        "description": "Query object",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/query.Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    }
+                }
+            }
+        },
+        "/query/software_inventory": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Query software inventory with filters, aggregations, and sorting",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "query"
+                ],
+                "summary": "Query software inventory",
+                "parameters": [
+                    {
+                        "description": "Query object",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/query.Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    }
+                }
+            }
+        },
+        "/query/unified": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Execute cross-entity correlation queries with JOIN support (e.g., assets + software, assets + findings)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "query"
+                ],
+                "summary": "Execute unified query",
+                "parameters": [
+                    {
+                        "description": "Unified query object (JSON with primary_entity, join, filters, aggregations, sort, limit, offset)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Query results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueryError"
+                        }
+                    }
+                }
+            }
+        },
+        "/software": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of software with optional filters for vendor, product, version, and CPE",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "software"
+                ],
+                "summary": "List software catalog",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by vendor",
+                        "name": "vendor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by product name",
+                        "name": "product",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by version",
+                        "name": "version",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by CPE string",
+                        "name": "cpe",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Software list with pagination",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/software/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get detailed information about a specific software including affected assets and related findings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "software"
+                ],
+                "summary": "Get software by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Software ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Software details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.QueryError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "message": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "ingest.InstalledSoftware": {
+            "type": "object",
+            "properties": {
+                "cpe": {
+                    "description": "CPE string (if provided by scanner)",
+                    "type": "string"
+                },
+                "edition": {
+                    "type": "string"
+                },
+                "install_path": {
+                    "description": "Install location (optional)",
+                    "type": "string"
+                },
+                "product": {
+                    "type": "string"
+                },
+                "vendor": {
+                    "description": "Software identification",
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "ingest.VMAsset": {
+            "type": "object",
+            "properties": {
+                "external_ids": {
+                    "description": "External IDs (e.g., AWS instance ID, Azure resource ID)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "hostname": {
+                    "description": "Hostname (primary locator)",
+                    "type": "string"
+                },
+                "installed_software": {
+                    "description": "Installed software (optional, for software inventory)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ingest.InstalledSoftware"
+                    }
+                },
+                "ip_addresses": {
+                    "description": "IP addresses (optional, conditional matching)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "shortname": {
+                    "description": "Shortname (optional, for DHCP-heavy environments)",
+                    "type": "string"
+                },
+                "static_ip": {
+                    "description": "Whether this asset has a static IP (for conditional IP matching)",
+                    "type": "boolean"
+                }
+            }
+        },
+        "ingest.VMFinding": {
+            "type": "object",
+            "required": [
+                "asset",
+                "finding",
+                "last_found",
+                "status"
+            ],
+            "properties": {
+                "asset": {
+                    "description": "Asset identification",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ingest.VMAsset"
+                        }
+                    ]
+                },
+                "evidence": {
+                    "description": "Additional evidence",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "finding": {
+                    "description": "Finding details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ingest.VMFindingDetails"
+                        }
+                    ]
+                },
+                "first_found": {
+                    "type": "string"
+                },
+                "last_found": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status and timestamps",
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "fixed",
+                        "fixed_by_verification"
+                    ]
+                }
+            }
+        },
+        "ingest.VMFindingDetails": {
+            "type": "object",
+            "required": [
+                "definition_id",
+                "severity",
+                "title"
+            ],
+            "properties": {
+                "cves": {
+                    "description": "CVE IDs associated with this finding",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "definition_id": {
+                    "description": "Scanner-specific definition ID",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description (optional)",
+                    "type": "string"
+                },
+                "references": {
+                    "description": "References (URLs, advisories, etc.)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "severity": {
+                    "description": "Severity level",
+                    "type": "string",
+                    "enum": [
+                        "Critical",
+                        "High",
+                        "Medium",
+                        "Low",
+                        "Info"
+                    ]
+                },
+                "solution": {
+                    "description": "Solution text (optional)",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title/name of the vulnerability",
+                    "type": "string"
+                }
+            }
+        },
+        "ingest.VMFindingsPayload": {
+            "type": "object",
+            "required": [
+                "findings",
+                "scanned_at",
+                "source"
+            ],
+            "properties": {
+                "findings": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/ingest.VMFinding"
+                    }
+                },
+                "scanned_at": {
+                    "type": "string"
+                },
+                "scanner": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "query.Aggregation": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "count, sum, max, min, group_by",
+                    "type": "string"
+                }
+            }
+        },
+        "query.Filter": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
+        "query.Join": {
+            "type": "object",
+            "properties": {
+                "entity": {
+                    "description": "Entity to join (software_inventory, findings)",
+                    "type": "string"
+                },
+                "on": {
+                    "description": "Join condition",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/query.JoinCondition"
+                        }
+                    ]
+                },
+                "type": {
+                    "description": "\"left\" only for MVP",
+                    "type": "string"
+                }
+            }
+        },
+        "query.JoinCondition": {
+            "type": "object",
+            "properties": {
+                "joined": {
+                    "description": "Field from joined entity",
+                    "type": "string"
+                },
+                "primary": {
+                    "description": "Field from primary entity",
+                    "type": "string"
+                }
+            }
+        },
+        "query.Query": {
+            "type": "object",
+            "properties": {
+                "aggregations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/query.Aggregation"
+                    }
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/query.Filter"
+                    }
+                },
+                "join": {
+                    "$ref": "#/definitions/query.Join"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "sort": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/query.Sort"
+                    }
+                }
+            }
+        },
+        "query.Sort": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "order": {
+                    "description": "asc, desc",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

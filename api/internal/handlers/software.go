@@ -12,6 +12,23 @@ import (
 
 // GetSoftwareCatalog handles GET /api/v1/software
 // Returns a paginated list of software with optional filters
+// @Summary List software catalog
+// @Description Get a paginated list of software with optional filters for vendor, product, version, and CPE
+// @Tags software
+// @Accept json
+// @Produce json
+// @Param vendor query string false "Filter by vendor"
+// @Param product query string false "Filter by product name"
+// @Param version query string false "Filter by version"
+// @Param cpe query string false "Filter by CPE string"
+// @Param limit query int false "Maximum number of results (default: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} map[string]interface{} "Software list with pagination"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /software [get]
 func GetSoftwareCatalog(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -96,6 +113,18 @@ func respondWithSoftwareList(w http.ResponseWriter, software []repository.Softwa
 
 // GetSoftwareByID handles GET /api/v1/software/{id}
 // Returns detailed information about a specific software including affected assets and related findings
+// @Summary Get software by ID
+// @Description Get detailed information about a specific software including affected assets and related findings
+// @Tags software
+// @Accept json
+// @Produce json
+// @Param id path int true "Software ID"
+// @Success 200 {object} map[string]interface{} "Software details"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /software/{id} [get]
 func GetSoftwareByID(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -136,6 +165,18 @@ func GetSoftwareByID(db *sqlx.DB) http.HandlerFunc {
 
 // GetSoftwareForAsset handles GET /api/v1/assets/{id}/software
 // Returns all software installed on a specific asset
+// @Summary Get software for asset
+// @Description Get all software installed on a specific asset
+// @Tags assets,software
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Success 200 {object} map[string]interface{} "Software list for asset"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /assets/{id}/software [get]
 func GetSoftwareForAsset(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

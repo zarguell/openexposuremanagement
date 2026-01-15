@@ -14,6 +14,7 @@ type Config struct {
 	LogLevel    int
 	DemoMode    bool
 	DemoAPIKey  string
+	SwaggerEnabled bool
 
 	// OIDC Configuration
 	OIDCIssuer   string
@@ -23,14 +24,15 @@ type Config struct {
 // Load configuration from environment variables
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:  getEnv("DATABASE_URL", "postgres://oem:password@localhost:5432/oem?sslmode=disable"),
-		Port:         getEnv("API_PORT", "8080"),
-		Environment:  getEnv("ENVIRONMENT", "development"),
-		LogLevel:     getLogLevel(getEnv("LOG_LEVEL", "info")),
-		DemoMode:     getEnvBool("DEMO_MODE", false),
-		DemoAPIKey:   getEnv("DEMO_API_KEY", ""),
-		OIDCIssuer:   getEnv("OIDC_ISSUER", ""),
-		OIDCClientID: getEnv("OIDC_CLIENT_ID", ""),
+		DatabaseURL:     getEnv("DATABASE_URL", "postgres://oem:password@localhost:5432/oem?sslmode=disable"),
+		Port:            getEnv("API_PORT", "8080"),
+		Environment:     getEnv("ENVIRONMENT", "development"),
+		LogLevel:        getLogLevel(getEnv("LOG_LEVEL", "info")),
+		DemoMode:        getEnvBool("DEMO_MODE", false),
+		DemoAPIKey:      getEnv("DEMO_API_KEY", ""),
+		SwaggerEnabled:  getEnvBool("SWAGGER_ENABLED", true),
+		OIDCIssuer:      getEnv("OIDC_ISSUER", ""),
+		OIDCClientID:    getEnv("OIDC_CLIENT_ID", ""),
 	}
 
 	return cfg, nil

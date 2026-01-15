@@ -10,6 +10,25 @@ import (
 )
 
 // ListFindings handles GET /findings
+// @Summary List findings
+// @Description Get a paginated list of findings with optional filters and threat intelligence enrichment
+// @Tags findings
+// @Accept json
+// @Produce json
+// @Param source query string false "Filter by scanner source"
+// @Param severity query string false "Filter by severity"
+// @Param effective_status query string false "Filter by effective status (open, fixed)"
+// @Param cve query string false "Filter by CVE ID"
+// @Param asset query string false "Filter by asset name"
+// @Param include_intel query string false "Include threat intelligence data (NVD, EPSS, KEV)"
+// @Param limit query int false "Maximum number of results (default: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} map[string]interface{} "Findings list with pagination"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /findings [get]
 func ListFindings(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

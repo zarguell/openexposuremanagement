@@ -74,8 +74,11 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 	}
 
 	// Add tenant_id to filters (security)
-	tenantFilter := fmt.Sprintf("tenant_id = $%d", len(args)+1)
+	// Qualify with primary entity table alias for JOIN queries
+	// IMPORTANT: Must add to args before injecting into SQL to maintain correct parameter positions
 	args = append(args, tenantID)
+	tenantParamPos := len(args) // Position of tenant_id parameter (1-indexed)
+	tenantFilter := fmt.Sprintf("%s.tenant_id = $%d", entityType, tenantParamPos)
 
 	// Inject tenant filter into SQL
 	// Must inject before LIMIT/OFFSET clauses if they exist
@@ -83,8 +86,11 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 		// No WHERE clause yet, need to add one
 		// But must insert before LIMIT/OFFSET if they exist
 		if idx := strings.Index(sql, " LIMIT"); idx != -1 {
-			// Insert WHERE before LIMIT
-			sql = sql[:idx] + " WHERE " + tenantFilter + sql[idx:]
+			// Insert WHERE before LIMIT, update LIMIT parameter position
+			limitPart := sql[idx:] // " LIMIT $X"
+			// Increment the parameter position in LIMIT clause
+			updatedLimitPart := strings.ReplaceAll(limitPart, fmt.Sprintf("$%d", tenantParamPos), fmt.Sprintf("$%d", tenantParamPos+1))
+			sql = sql[:idx] + " WHERE " + tenantFilter + updatedLimitPart
 		} else if idx := strings.Index(sql, " OFFSET"); idx != -1 {
 			// Insert WHERE before OFFSET (shouldn't happen without LIMIT, but handle it)
 			sql = sql[:idx] + " WHERE " + tenantFilter + sql[idx:]
@@ -94,7 +100,29 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 		}
 	} else {
 		// WHERE exists, prepend tenant filter to existing conditions
-		sql = strings.Replace(sql, "WHERE", "WHERE "+tenantFilter+" AND ", 1)
+		// Find the position right after "WHERE"
+		whereIdx := strings.Index(sql, "WHERE")
+		insertPos := whereIdx + 5  // Length of "WHERE"
+
+		// Check if we need to update LIMIT/OFFSET parameter positions
+		if idx := strings.Index(sql, " LIMIT"); idx != -1 {
+			// We have a LIMIT clause after the WHERE, need to update its parameter position
+			limitPart := sql[idx:] // " LIMIT $X"
+			offsetPart := ""
+			if offsetIdx := strings.Index(sql, " OFFSET"); offsetIdx != -1 && offsetIdx > idx {
+				// We have both LIMIT and OFFSET
+				limitPart = sql[idx:offsetIdx]
+				offsetPart = sql[offsetIdx:]
+				// Update OFFSET parameter position (it comes after LIMIT)
+				updatedOffsetPart := strings.ReplaceAll(offsetPart, fmt.Sprintf("$%d", tenantParamPos+1), fmt.Sprintf("$%d", tenantParamPos+2))
+				offsetPart = updatedOffsetPart
+			}
+			// Update LIMIT parameter position
+			updatedLimitPart := strings.ReplaceAll(limitPart, fmt.Sprintf("$%d", tenantParamPos), fmt.Sprintf("$%d", tenantParamPos+1))
+			sql = sql[:insertPos] + " " + tenantFilter + " AND " + sql[insertPos:idx] + updatedLimitPart + offsetPart
+		} else {
+			sql = sql[:insertPos] + " " + tenantFilter + " AND " + sql[insertPos:]
+		}
 	}
 
 	// Start timer

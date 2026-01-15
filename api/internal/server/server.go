@@ -7,9 +7,11 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/openexposuremanagement/oem/internal/config"
+	_ "github.com/openexposuremanagement/oem/docs" // Import docs for swagger
 	"github.com/openexposuremanagement/oem/internal/handlers"
 	"github.com/openexposuremanagement/oem/internal/services/query"
 	"github.com/rs/zerolog/log"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Server represents the HTTP server
@@ -121,6 +123,13 @@ func (s *Server) registerRoutes() {
 
 	// Mount API v1
 	s.router.Handle("/api/v1/", http.StripPrefix("/api/v1", apiV1))
+
+	// Swagger documentation (optional, enabled via config)
+	if s.cfg.SwaggerEnabled {
+		s.router.Handle("/swagger/", httpSwagger.WrapHandler)
+		s.router.Handle("/swagger/doc.json", httpSwagger.WrapHandler)
+		log.Info().Msg("Swagger documentation enabled at /swagger/")
+	}
 }
 
 // handleHealthz handles health check requests

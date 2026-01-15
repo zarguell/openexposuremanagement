@@ -18,13 +18,10 @@ export const UNIFIED_QUERY_WIDGETS: DashboardUnifiedWidget[] = [
     title: 'Assets Missing CrowdStrike',
     type: 'metric',
     query: {
-      primary_entity: 'assets',
-      join: {
-        entity: 'software_inventory',
-        type: 'left',
-        on: { primary: 'id', joined: 'asset_id' },
-      },
-      filters: [{ field: 'vendor', operator: 'neq', value: 'CrowdStrike' }],
+      filters: [
+        { field: 'is_active', operator: 'eq', value: true },
+        { field: 'software.vendor', operator: 'eq', value: 'CrowdStrike', negate: true },
+      ],
       limit: 50,
     } as UnifiedQuery,
     icon: '🔒',
@@ -37,15 +34,9 @@ export const UNIFIED_QUERY_WIDGETS: DashboardUnifiedWidget[] = [
     title: 'Assets with Exploitable CVEs',
     type: 'metric',
     query: {
-      primary_entity: 'assets',
-      join: {
-        entity: 'findings',
-        type: 'left',
-        on: { primary: 'id', joined: 'asset_id' },
-      },
       filters: [
-        { field: 'is_kev', operator: 'eq', value: true },
-        { field: 'effective_status', operator: 'eq', value: 'open' },
+        { field: 'findings.is_kev', operator: 'eq', value: true },
+        { field: 'findings.effective_status', operator: 'eq', value: 'open' },
       ],
       limit: 50,
     } as UnifiedQuery,

@@ -16,11 +16,17 @@ type Query struct {
 	Offset       *int          `json:"offset,omitempty"`
 }
 
+// IntPtr returns a pointer to an int (helper for tests)
+func IntPtr(i int) *int {
+	return &i
+}
+
 // Filter represents a single filter condition
 type Filter struct {
 	Field    string      `json:"field"`
 	Operator string      `json:"operator"`
 	Value    interface{} `json:"value"`
+	Negate   bool        `json:"negate,omitempty"` // If true, negates the filter (NOT EXISTS for related entities)
 }
 
 // Aggregation represents an aggregation operation
@@ -46,6 +52,7 @@ type Join struct {
 	Entity string        `json:"entity"` // Entity to join (software_inventory, findings)
 	Type   string        `json:"type"`   // "left" only for MVP
 	On     JoinCondition `json:"on"`     // Join condition
+	Filter *Filter       `json:"filter,omitempty"` // Optional filter to apply to joined entity for anti-join patterns
 }
 
 // Validate checks if the join configuration is valid

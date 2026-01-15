@@ -33,16 +33,21 @@ var templates = map[string]*Template{
 				Primary: "id",
 				Joined:  "asset_id",
 			},
+			Filter: &Filter{
+				Field:    "vendor",
+				Operator: "eq",
+				Value:    "{{software_vendor}}",
+			},
 		},
 		Filters: []Filter{
-			{Field: "product_name", Operator: "eq", Value: "{{software_name}}"},
+			{Field: "is_active", Operator: "eq", Value: true},
 		},
 		Parameters: []Parameter{
 			{
-				Name:        "software_name",
+				Name:        "software_vendor",
 				Type:        "string",
-				Description: "Name of the software to check (e.g., 'CrowdStrike Falcon')",
-				Default:     "CrowdStrike Falcon",
+				Description: "Vendor of the software to check (e.g., 'CrowdStrike')",
+				Default:     "CrowdStrike",
 			},
 		},
 	},

@@ -1,0 +1,806 @@
+definitions:
+  api.QueryError:
+    properties:
+      code:
+        type: string
+      details:
+        additionalProperties: true
+        type: object
+      message:
+        type: string
+      request_id:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  ingest.InstalledSoftware:
+    properties:
+      cpe:
+        description: CPE string (if provided by scanner)
+        type: string
+      edition:
+        type: string
+      install_path:
+        description: Install location (optional)
+        type: string
+      product:
+        type: string
+      vendor:
+        description: Software identification
+        type: string
+      version:
+        type: string
+    type: object
+  ingest.VMAsset:
+    properties:
+      external_ids:
+        additionalProperties:
+          type: string
+        description: External IDs (e.g., AWS instance ID, Azure resource ID)
+        type: object
+      hostname:
+        description: Hostname (primary locator)
+        type: string
+      installed_software:
+        description: Installed software (optional, for software inventory)
+        items:
+          $ref: '#/definitions/ingest.InstalledSoftware'
+        type: array
+      ip_addresses:
+        description: IP addresses (optional, conditional matching)
+        items:
+          type: string
+        type: array
+      shortname:
+        description: Shortname (optional, for DHCP-heavy environments)
+        type: string
+      static_ip:
+        description: Whether this asset has a static IP (for conditional IP matching)
+        type: boolean
+    type: object
+  ingest.VMFinding:
+    properties:
+      asset:
+        allOf:
+        - $ref: '#/definitions/ingest.VMAsset'
+        description: Asset identification
+      evidence:
+        additionalProperties: true
+        description: Additional evidence
+        type: object
+      finding:
+        allOf:
+        - $ref: '#/definitions/ingest.VMFindingDetails'
+        description: Finding details
+      first_found:
+        type: string
+      last_found:
+        type: string
+      status:
+        description: Status and timestamps
+        enum:
+        - open
+        - fixed
+        - fixed_by_verification
+        type: string
+    required:
+    - asset
+    - finding
+    - last_found
+    - status
+    type: object
+  ingest.VMFindingDetails:
+    properties:
+      cves:
+        description: CVE IDs associated with this finding
+        items:
+          type: string
+        type: array
+      definition_id:
+        description: Scanner-specific definition ID
+        type: string
+      description:
+        description: Description (optional)
+        type: string
+      references:
+        description: References (URLs, advisories, etc.)
+        items:
+          type: string
+        type: array
+      severity:
+        description: Severity level
+        enum:
+        - Critical
+        - High
+        - Medium
+        - Low
+        - Info
+        type: string
+      solution:
+        description: Solution text (optional)
+        type: string
+      title:
+        description: Title/name of the vulnerability
+        type: string
+    required:
+    - definition_id
+    - severity
+    - title
+    type: object
+  ingest.VMFindingsPayload:
+    properties:
+      findings:
+        items:
+          $ref: '#/definitions/ingest.VMFinding'
+        minItems: 1
+        type: array
+      scanned_at:
+        type: string
+      scanner:
+        type: string
+      source:
+        type: string
+    required:
+    - findings
+    - scanned_at
+    - source
+    type: object
+  query.Aggregation:
+    properties:
+      field:
+        type: string
+      type:
+        description: count, sum, max, min, group_by
+        type: string
+    type: object
+  query.Filter:
+    properties:
+      field:
+        type: string
+      operator:
+        type: string
+      value: {}
+    type: object
+  query.Join:
+    properties:
+      entity:
+        description: Entity to join (software_inventory, findings)
+        type: string
+      "on":
+        allOf:
+        - $ref: '#/definitions/query.JoinCondition'
+        description: Join condition
+      type:
+        description: '"left" only for MVP'
+        type: string
+    type: object
+  query.JoinCondition:
+    properties:
+      joined:
+        description: Field from joined entity
+        type: string
+      primary:
+        description: Field from primary entity
+        type: string
+    type: object
+  query.Query:
+    properties:
+      aggregations:
+        items:
+          $ref: '#/definitions/query.Aggregation'
+        type: array
+      filters:
+        items:
+          $ref: '#/definitions/query.Filter'
+        type: array
+      join:
+        $ref: '#/definitions/query.Join'
+      limit:
+        type: integer
+      offset:
+        type: integer
+      sort:
+        items:
+          $ref: '#/definitions/query.Sort'
+        type: array
+    type: object
+  query.Sort:
+    properties:
+      field:
+        type: string
+      order:
+        description: asc, desc
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /assets:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of assets with optional search query
+      parameters:
+      - description: Search query for hostname/IP
+        in: query
+        name: query
+        type: string
+      - description: 'Maximum number of results (default: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Asset list with metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List assets
+      tags:
+      - assets
+  /assets/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific asset including installed
+        software
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Asset details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Asset not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get asset by ID
+      tags:
+      - assets
+  /assets/{id}/software:
+    get:
+      consumes:
+      - application/json
+      description: Get all software installed on a specific asset
+      parameters:
+      - description: Asset ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Software list for asset
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get software for asset
+      tags:
+      - assets
+      - software
+  /dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Get dashboard statistics including asset counts, finding counts,
+        and threat intel status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard data
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get dashboard data
+      tags:
+      - dashboard
+  /dashboard/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Manually refresh the materialized views used for dashboard statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Refresh status
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Refresh dashboard materialized views
+      tags:
+      - dashboard
+  /findings:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of findings with optional filters and threat
+        intelligence enrichment
+      parameters:
+      - description: Filter by scanner source
+        in: query
+        name: source
+        type: string
+      - description: Filter by severity
+        in: query
+        name: severity
+        type: string
+      - description: Filter by effective status (open, fixed)
+        in: query
+        name: effective_status
+        type: string
+      - description: Filter by CVE ID
+        in: query
+        name: cve
+        type: string
+      - description: Filter by asset name
+        in: query
+        name: asset
+        type: string
+      - description: Include threat intelligence data (NVD, EPSS, KEV)
+        in: query
+        name: include_intel
+        type: string
+      - description: 'Maximum number of results (default: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Findings list with pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List findings
+      tags:
+      - findings
+  /ingest/vm/findings:
+    post:
+      consumes:
+      - application/json
+      description: Ingest vulnerability findings from VM scanners (Tenable, Qualys,
+        etc.)
+      parameters:
+      - description: VM findings payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ingest.VMFindingsPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ingest summary
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Ingest VM findings
+      tags:
+      - ingestion
+  /query/assets:
+    post:
+      consumes:
+      - application/json
+      description: Query assets with filters, aggregations, and sorting
+      parameters:
+      - description: Query object
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/query.Query'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Query results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+      security:
+      - ApiKeyAuth: []
+      summary: Query assets
+      tags:
+      - query
+  /query/findings:
+    post:
+      consumes:
+      - application/json
+      description: Query findings with filters, aggregations, and sorting
+      parameters:
+      - description: Query object
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/query.Query'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Query results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+      security:
+      - ApiKeyAuth: []
+      summary: Query findings
+      tags:
+      - query
+  /query/software_inventory:
+    post:
+      consumes:
+      - application/json
+      description: Query software inventory with filters, aggregations, and sorting
+      parameters:
+      - description: Query object
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/query.Query'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Query results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+      security:
+      - ApiKeyAuth: []
+      summary: Query software inventory
+      tags:
+      - query
+  /query/unified:
+    post:
+      consumes:
+      - application/json
+      description: Execute cross-entity correlation queries with JOIN support (e.g.,
+        assets + software, assets + findings)
+      parameters:
+      - description: Unified query object (JSON with primary_entity, join, filters,
+          aggregations, sort, limit, offset)
+        in: body
+        name: request
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Query results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.QueryError'
+      security:
+      - ApiKeyAuth: []
+      summary: Execute unified query
+      tags:
+      - query
+  /software:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of software with optional filters for vendor,
+        product, version, and CPE
+      parameters:
+      - description: Filter by vendor
+        in: query
+        name: vendor
+        type: string
+      - description: Filter by product name
+        in: query
+        name: product
+        type: string
+      - description: Filter by version
+        in: query
+        name: version
+        type: string
+      - description: Filter by CPE string
+        in: query
+        name: cpe
+        type: string
+      - description: 'Maximum number of results (default: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Software list with pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List software catalog
+      tags:
+      - software
+  /software/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific software including affected
+        assets and related findings
+      parameters:
+      - description: Software ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Software details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get software by ID
+      tags:
+      - software
+swagger: "2.0"

@@ -14,6 +14,18 @@ import (
 )
 
 // IngestVMFindings handles POST /ingest/vm/findings
+// @Summary Ingest VM findings
+// @Description Ingest vulnerability findings from VM scanners (Tenable, Qualys, etc.)
+// @Tags ingestion
+// @Accept json
+// @Produce json
+// @Param request body ingest.VMFindingsPayload true "VM findings payload"
+// @Success 200 {object} map[string]interface{} "Ingest summary"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /ingest/vm/findings [post]
 func IngestVMFindings(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

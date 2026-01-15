@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   UnifiedQuery,
-  Join,
   Filter,
   ALLOWED_FIELDS,
   ALLOWED_OPERATORS,
@@ -14,8 +13,8 @@ interface UnifiedQueryBuilderProps {
 }
 
 /**
- * Query builder for unified queries with JOIN support
- * Allows building cross-entity correlation queries
+ * Query builder for unified queries with dot-walking support
+ * Allows building cross-entity correlation queries using simple dot notation
  */
 export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
   query,
@@ -25,19 +24,38 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
 
-  // Get primary entity fields (assets)
-  const primaryFields = ALLOWED_FIELDS.assets;
+  // Get all available fields with dot-walking support
+  const getAvailableFields = () => {
+    const fields: Array<{category: string; field: string; label: string}> = [];
 
-  // Get joined entity fields based on join type
-  const getJoinedFields = () => {
-    if (!query.join) return [];
-    if (query.join.entity === 'software_inventory') {
-      return ['vendor', 'product_name', 'version', 'cpe_string', 'title_formatted', 'first_seen_at', 'last_seen_at'];
-    }
-    if (query.join.entity === 'findings') {
-      return ALLOWED_FIELDS.findings;
-    }
-    return [];
+    // Primary entity fields (assets)
+    ALLOWED_FIELDS.assets.forEach(field => {
+      fields.push({
+        category: 'Primary Entity (Assets)',
+        field: field,
+        label: field,
+      });
+    });
+
+    // Software fields (dot-walking)
+    ALLOWED_FIELDS.software.forEach(field => {
+      fields.push({
+        category: 'Software (via software.field)',
+        field: `software.${field}`,
+        label: `software.${field}`,
+      });
+    });
+
+    // Findings fields (dot-walking)
+    ALLOWED_FIELDS.findings.forEach(field => {
+      fields.push({
+        category: 'Findings (via findings.field)',
+        field: `findings.${field}`,
+        label: `findings.${field}`,
+      });
+    });
+
+    return fields;
   };
 
   // Update JSON when query changes in simple mode
@@ -48,39 +66,10 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
     }
   }, [query, isAdvancedMode]);
 
-  const handleAddJoin = useCallback(() => {
-    const newJoin: Join = {
-      entity: 'software_inventory',
-      type: 'left',
-      on: {
-        primary: 'id',
-        joined: 'asset_id',
-      },
-    };
-
-    onChange({
-      ...query,
-      join: newJoin,
-    });
-  }, [query, onChange]);
-
-  const handleRemoveJoin = useCallback(() => {
-    const { join, ...rest } = query;
-    onChange(rest);
-  }, [query, onChange]);
-
-  const handleJoinChange = useCallback((changes: Partial<Join>) => {
-    if (!query.join) return;
-    onChange({
-      ...query,
-      join: { ...query.join, ...changes },
-    });
-  }, [query, onChange]);
-
   const handleAddFilter = useCallback(() => {
-    const field = primaryFields[0];
+    const availableFields = getAvailableFields();
     const newFilter: Filter = {
-      field,
+      field: availableFields[0].field,
       operator: ALLOWED_OPERATORS[0],
       value: '',
     };
@@ -89,7 +78,7 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
       ...query,
       filters: [...(query.filters || []), newFilter],
     });
-  }, [query, onChange, primaryFields]);
+  }, [query, onChange]);
 
   const handleRemoveFilter = useCallback((index: number) => {
     const newFilters = [...(query.filters || [])];
@@ -118,8 +107,6 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
       // Validate the parsed query has the right structure
       if (typeof parsed === 'object' && parsed !== null) {
         const validatedQuery: UnifiedQuery = {
-          primary_entity: parsed.primary_entity || 'assets',
-          join: parsed.join,
           filters: Array.isArray(parsed.filters) ? parsed.filters : [],
           aggregations: Array.isArray(parsed.aggregations) ? parsed.aggregations : undefined,
           sort: Array.isArray(parsed.sort) ? parsed.sort : undefined,
@@ -182,6 +169,15 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
     );
   };
 
+  const availableFields = getAvailableFields();
+  const fieldsByCategory = availableFields.reduce((acc, field) => {
+    if (!acc[field.category]) {
+      acc[field.category] = [];
+    }
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, typeof availableFields>);
+
   return (
     <div className="unified-query-builder">
       <div className="builder-header">
@@ -202,7 +198,7 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
         <span className="mode-hint">
           {isAdvancedMode
             ? 'Free-form JSON query editor'
-            : 'Guided builder for JOIN queries'}
+            : 'Guided builder with dot-walking support'}
         </span>
       </div>
 
@@ -216,58 +212,33 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
           <textarea
             value={jsonQuery}
             onChange={handleJsonQueryChange}
-            placeholder='{"primary_entity": "assets", "join": {...}, "filters": [...]}'
+            placeholder='{"filters": [{"field": "software.vendor", "operator": "eq", "value": "CrowdStrike", "negate": true}]}'
             className="json-editor"
             data-testid="json-query-editor"
           />
           <div className="editor-hint">
-            💡 Edit the JSON query directly. Changes are applied automatically when valid.
+            💡 Edit the JSON query directly. Use dot notation for related entities (e.g., <code>software.vendor</code>, <code>findings.severity</code>).
+            Add <code>"negate": true</code> to filter for "NOT EXISTS" (e.g., assets without specific software).
           </div>
         </div>
       ) : (
         <div className="simple-mode">
-          {/* Join Configuration */}
-          <div className="join-section">
-            <h3>Join Configuration</h3>
-            {!query.join ? (
-              <div className="join-empty">
-                <p>No join configured. Query will return only asset data.</p>
-                <button onClick={handleAddJoin} className="add-join-btn">
-                  Add Join
-                </button>
-              </div>
-            ) : (
-              <div className="join-config">
-                <div className="join-row">
-                  <label>Joined Entity:</label>
-                  <select
-                    value={query.join.entity}
-                    onChange={(e) => handleJoinChange({
-                      entity: e.target.value as 'software_inventory' | 'findings'
-                    })}
-                    className="join-select"
-                  >
-                    <option value="software_inventory">Software Inventory</option>
-                    <option value="findings">Findings</option>
-                  </select>
-                </div>
-
-                <div className="join-info">
-                  <strong>Join Type:</strong> LEFT JOIN
-                </div>
-
-                <div className="join-info">
-                  <strong>On:</strong> assets.{query.join.on.primary} = {query.join.entity}.{query.join.on.joined}
-                </div>
-
-                <button
-                  onClick={handleRemoveJoin}
-                  className="remove-join-btn"
-                >
-                  Remove Join
-                </button>
-              </div>
-            )}
+          {/* Dot-Walking Help */}
+          <div className="help-section">
+            <h3>💡 Dot-Walking Syntax</h3>
+            <p>
+              Use dot notation to filter on related entities:
+            </p>
+            <ul>
+              <li><code>software.vendor</code> - Filter by software vendor</li>
+              <li><code>software.product_name</code> - Filter by software product</li>
+              <li><code>findings.severity</code> - Filter by finding severity</li>
+              <li><code>findings.cve</code> - Filter by CVE ID</li>
+            </ul>
+            <p>
+              <strong>Anti-join:</strong> Check "Negate" to find assets <em>without</em> matching related records
+              (e.g., <code>software.vendor = "CrowdStrike"</code> with Negate → assets without CrowdStrike).
+            </p>
           </div>
 
           {/* Filters */}
@@ -287,18 +258,13 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
                       value={filter.field}
                       onChange={(e) => handleFilterChange(index, { field: e.target.value })}
                     >
-                      <optgroup label="Primary Entity (Assets)">
-                        {primaryFields.map(field => (
-                          <option key={field} value={field}>{field}</option>
-                        ))}
-                      </optgroup>
-                      {query.join && (
-                        <optgroup label={`Joined Entity (${query.join.entity})`}>
-                          {getJoinedFields().map(field => (
-                            <option key={field} value={field}>{field}</option>
+                      {Object.entries(fieldsByCategory).map(([category, fields]) => (
+                        <optgroup key={category} label={category}>
+                          {fields.map(field => (
+                            <option key={field.field} value={field.field}>{field.label}</option>
                           ))}
                         </optgroup>
-                      )}
+                      ))}
                     </select>
 
                     <select
@@ -312,6 +278,18 @@ export const UnifiedQueryBuilder: React.FC<UnifiedQueryBuilderProps> = ({
                     </select>
 
                     {renderValueInput(filter, index)}
+
+                    {/* Negate checkbox for anti-join patterns */}
+                    {filter.field.includes('.') && (
+                      <label className="negate-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={filter.negate || false}
+                          onChange={(e) => handleFilterChange(index, { negate: e.target.checked })}
+                        />
+                        <span>Negate (NOT EXISTS)</span>
+                      </label>
+                    )}
 
                     <button
                       onClick={() => handleRemoveFilter(index)}

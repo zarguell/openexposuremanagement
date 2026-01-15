@@ -5,7 +5,6 @@ import { apiClient } from '../api/client';
 import { UnifiedQuery, UnifiedQueryResult } from '../types/query';
 
 const DEFAULT_QUERY: UnifiedQuery = {
-  primary_entity: 'assets',
   filters: [],
   limit: 50,
   offset: 0,
@@ -23,20 +22,17 @@ const QUERY_TEMPLATES: Array<{
     name: 'Assets Missing CrowdStrike',
     description: 'Find all assets that do not have CrowdStrike installed',
     query: {
-      primary_entity: 'assets',
-      join: {
-        entity: 'software_inventory',
-        type: 'left',
-        on: {
-          primary: 'id',
-          joined: 'asset_id',
-        },
-      },
       filters: [
         {
-          field: 'vendor',
-          operator: 'neq',
+          field: 'is_active',
+          operator: 'eq',
+          value: true,
+        },
+        {
+          field: 'software.vendor',
+          operator: 'eq',
           value: 'CrowdStrike',
+          negate: true,
         },
       ],
       limit: 50,
@@ -47,20 +43,16 @@ const QUERY_TEMPLATES: Array<{
     name: 'Assets with Exploitable CVEs',
     description: 'Find assets with critical or high CVEs that are known exploited (KEV)',
     query: {
-      primary_entity: 'assets',
-      join: {
-        entity: 'findings',
-        type: 'left',
-        on: {
-          primary: 'id',
-          joined: 'asset_id',
-        },
-      },
       filters: [
         {
-          field: 'is_kev',
+          field: 'findings.is_kev',
           operator: 'eq',
           value: true,
+        },
+        {
+          field: 'findings.effective_status',
+          operator: 'eq',
+          value: 'open',
         },
       ],
       limit: 50,
@@ -71,20 +63,16 @@ const QUERY_TEMPLATES: Array<{
     name: 'Critical Vulnerabilities by Software',
     description: 'View software installed on assets along with critical vulnerabilities',
     query: {
-      primary_entity: 'assets',
-      join: {
-        entity: 'findings',
-        type: 'left',
-        on: {
-          primary: 'id',
-          joined: 'asset_id',
-        },
-      },
       filters: [
         {
-          field: 'severity',
+          field: 'findings.severity',
           operator: 'eq',
           value: 'critical',
+        },
+        {
+          field: 'findings.effective_status',
+          operator: 'eq',
+          value: 'open',
         },
       ],
       limit: 50,
@@ -138,7 +126,7 @@ function UnifiedQueries() {
           Unified Queries
         </h1>
         <p style={{ margin: 0, color: '#6b7280', fontSize: '1rem' }}>
-          Build cross-entity correlation queries to join assets with software inventory and findings
+          Build cross-entity correlation queries using dot-walking syntax to join assets with software inventory and findings
         </p>
       </div>
 

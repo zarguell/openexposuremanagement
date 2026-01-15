@@ -44,6 +44,12 @@ services:
       context: ./ui
       dockerfile: Dockerfile
     container_name: oem-ui
+    environment:
+      # API Base URL for development proxy
+      # Uses docker service name 'api' for container-to-container communication
+      # Change to http://localhost:8080 if running UI locally with dockerized backend
+      API_BASE_URL: http://api:8080
+      # API_BASE_URL: http://localhost:8080  # Use this for local UI development
     ports:
       - "80:80"
     depends_on:

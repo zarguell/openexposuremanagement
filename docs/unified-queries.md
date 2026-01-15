@@ -1,8 +1,8 @@
-# Unified Queries
+# Unified Queries - Dot-Walking Syntax
 
 ## Overview
 
-The unified query API enables cross-entity correlation queries using 2-way LEFT JOINs between assets, software inventory, and findings.
+The unified query API enables cross-entity correlation queries using **dot-walking syntax** - a simple way to filter across related entities without explicit JOIN configuration.
 
 ## API Endpoint
 
@@ -16,15 +16,6 @@ POST /api/v1/query/unified
 
 ```json
 {
-  "primary_entity": "assets",
-  "join": {
-    "entity": "software_inventory",
-    "type": "left",
-    "on": {
-      "primary": "id",
-      "joined": "asset_id"
-    }
-  },
   "filters": [
     {"field": "is_active", "operator": "eq", "value": true}
   ],
@@ -32,12 +23,63 @@ POST /api/v1/query/unified
 }
 ```
 
-### Supported Entity Relationships
+### Dot-Walking for Related Entities
 
-| Primary Entity | Join Entity | On Condition |
-|----------------|-------------|--------------|
-| assets | software_inventory | assets.id = software_inventory.asset_id |
-| assets | findings | assets.id = findings.asset_id |
+Use dot notation to reference fields on related entities:
+
+- `software.vendor` - Software vendor field
+- `software.product_name` - Software product name
+- `findings.severity` - Finding severity
+- `findings.cve` - CVE ID
+
+**Example: Assets with specific software**
+
+```json
+{
+  "filters": [
+    {"field": "software.vendor", "operator": "eq", "value": "Microsoft"}
+  ],
+  "limit": 100
+}
+```
+
+This automatically generates an INNER JOIN to software_inventory and filters by vendor.
+
+### Anti-Join (NOT EXISTS) Pattern
+
+Use `negate: true` to find assets **without** matching related records:
+
+**Example: Assets without CrowdStrike**
+
+```json
+{
+  "filters": [
+    {"field": "is_active", "operator": "eq", "value": true},
+    {"field": "software.vendor", "operator": "eq", "value": "CrowdStrike", "negate": true}
+  ],
+  "limit": 100
+}
+```
+
+This generates a NOT EXISTS subquery to find active assets that don't have CrowdStrike installed.
+
+### Multiple Entity Joins
+
+Filter on multiple related entities in a single query:
+
+**Example: Assets with Log4j and CVE-2021-44228**
+
+```json
+{
+  "filters": [
+    {"field": "software.product_name", "operator": "eq", "value": "Log4j"},
+    {"field": "findings.cve", "operator": "eq", "value": "CVE-2021-44228"}
+  ],
+  "limit": 100
+}
+```
+
+This generates INNER JOINs to both software_inventory and findings.
 
 ## Common Use Cases
 
@@ -47,82 +89,115 @@ Find assets without CrowdStrike installed:
 
 ```json
 {
-  "primary_entity": "assets",
-  "join": {
-    "entity": "software_inventory",
-    "type": "left",
-    "on": {"primary": "id", "joined": "asset_id"}
-  },
   "filters": [
-    {"field": "product_name", "operator": "eq", "value": "CrowdStrike Falcon"}
+    {"field": "is_active", "operator": "eq", "value": true},
+    {"field": "software.vendor", "operator": "eq", "value": "CrowdStrike", "negate": true}
   ],
   "limit": 100
 }
 ```
 
-Returns assets where `product_name` is NULL (software not installed).
+**SQL equivalent:**
+```sql
+SELECT * FROM assets_extended AS assets
+WHERE assets.is_active = true
+AND NOT EXISTS (
+  SELECT 1 FROM software_inventory
+  WHERE software_inventory.asset_id = assets.id
+  AND software_inventory.vendor = 'CrowdStrike'
+)
+```
 
 ### Assets with Exploitable CVEs
 
-Find assets with high EPSS scores:
+Find assets with CISA KEV vulnerabilities:
 
 ```json
 {
-  "primary_entity": "assets",
-  "join": {
-    "entity": "findings",
-    "type": "left",
-    "on": {"primary": "id", "joined": "asset_id"}
-  },
   "filters": [
-    {"field": "epss_score", "operator": "gte", "value": 0.9}
+    {"field": "findings.is_kev", "operator": "eq", "value": true},
+    {"field": "findings.effective_status", "operator": "eq", "value": "open"}
   ],
   "limit": 100
 }
+```
+
+**SQL equivalent:**
+```sql
+SELECT DISTINCT assets.* FROM assets_extended AS assets
+INNER JOIN findings ON findings.asset_id = assets.id
+WHERE findings.is_kev = true
+AND findings.effective_status = 'open'
 ```
 
 ### Software Vulnerability Correlation
 
-Find CVEs affecting specific software:
+Find assets with specific software and CVEs:
 
 ```json
 {
-  "primary_entity": "findings",
   "filters": [
-    {"field": "cve", "operator": "eq", "value": "CVE-2021-44228"}
+    {"field": "software.product_name", "operator": "eq", "value": "Apache Tomcat"},
+    {"field": "findings.severity", "operator": "eq", "value": "critical"}
   ],
-  "limit": 50
+  "limit": 100
 }
 ```
 
-Findings view already includes asset information.
+## Translation Rules
+
+The backend automatically determines JOIN logic based on field references:
+
+1. **No dot notation** → Simple query on primary entity (assets)
+2. **Dot notation without negate** → INNER JOIN (must have matching record)
+3. **Dot notation with negate: true** → NOT EXISTS subquery (anti-join)
+
+**DISTINCT handling:**
+- INNER JOINs automatically add DISTINCT to prevent duplicate rows
+- NOT EXISTS queries don't need DISTINCT (no duplicates possible)
+
+## Supported Fields
+
+### Primary Entity (Assets)
+- `canonical_name`
+- `hostname_norm`
+- `shortname_norm`
+- `ipv4`
+- `first_seen_at`
+- `last_seen_at`
+- `is_active`
+
+### Software (via `software.*`)
+- `software.vendor`
+- `software.product_name`
+- `software.version`
+- `software.cpe_string`
+- `software.install_path`
+- `software.first_seen_at`
+- `software.last_seen_at`
+
+### Findings (via `findings.*`)
+- `findings.severity`
+- `findings.scanner_status`
+- `findings.effective_status`
+- `findings.cve`
+- `findings.epss_score`
+- `findings.is_kev`
+- `findings.first_observed_at`
+- `findings.last_observed_at`
 
 ## Performance Guidelines
 
 - **Max rows**: 5,000 (enforced)
 - **Timeout**: 5 seconds
-- **Join type**: LEFT JOIN only (prevents data explosion)
-- **Filters**: Required on primary entity for performance
+- **Filters**: Recommended on primary entity for performance
 - **Indexes**: Composite indexes support common join patterns
 
 ## Known Limitations (MVP)
 
-- **No N-way joins** (3+ entities) - only 2-way LEFT JOIN supported
+- **No N-way joins** (3+ entities) - only software and findings supported
 - **No aggregations on joined fields** - aggregations work on primary entity only
-- **No subquery pushdown optimization** - filters are applied after JOIN
-- **Template parameter substitution not yet implemented** - placeholders like `{{software_name}}` require manual replacement
-- **UI query builder not yet implemented** - backend-only API at this time
 - **No result caching** - each query executes against database
-
-## Future Enhancements
-
-- N-way JOIN support (3+ entity joins)
-- Subquery pushdown for better performance
-- Query result caching (5-minute TTL)
-- Materialized views for common join patterns
-- Template parameter substitution in backend
-- UI query builder with visual interface
-- Custom dashboard builder with unified query widgets
 
 ## Templates
 
@@ -142,11 +217,8 @@ The API provides pre-built query templates:
     {
       "id": 1,
       "canonical_name": "server1.local",
-      "vendor": "Microsoft",
-      "product_name": "Windows Server",
-      "cve": "CVE-2021-44228",
-      "epss_score": 0.95,
-      "is_kev": true
+      "hostname_norm": "server1",
+      "is_active": true
     }
   ],
   "meta": {
@@ -156,3 +228,10 @@ The API provides pre-built query templates:
   }
 }
 ```
+
+## Benefits of Dot-Walking Syntax
+
+- **Simpler**: No need to understand JOIN types or ON conditions
+- **Intuitive**: Dot notation is familiar from JSON/JavaScript
+- **Less backend exposure**: Users don't see SQL implementation details
+- **Easier to extend**: Add new relationships without breaking existing queries

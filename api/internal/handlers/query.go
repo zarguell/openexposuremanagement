@@ -40,18 +40,57 @@ func getRequestID(r *http.Request) string {
 }
 
 // QueryFindings handles POST /api/v1/query/findings
+// @Summary Query findings
+// @Description Query findings with filters, aggregations, and sorting
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body query.Query true "Query object"
+// @Success 200 {object} map[string]interface{} "Query results"
+// @Failure 400 {object} api.QueryError "Bad request"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 422 {object} api.QueryError "Validation error"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/findings [post]
 func (h *QueryHandler) QueryFindings(w http.ResponseWriter, r *http.Request) {
 	requestID := getRequestID(r)
 	h.executeQuery(w, r, requestID, "findings")
 }
 
 // QueryAssets handles POST /api/v1/query/assets
+// @Summary Query assets
+// @Description Query assets with filters, aggregations, and sorting
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body query.Query true "Query object"
+// @Success 200 {object} map[string]interface{} "Query results"
+// @Failure 400 {object} api.QueryError "Bad request"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 422 {object} api.QueryError "Validation error"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/assets [post]
 func (h *QueryHandler) QueryAssets(w http.ResponseWriter, r *http.Request) {
 	requestID := getRequestID(r)
 	h.executeQuery(w, r, requestID, "assets")
 }
 
 // QuerySoftwareInventory handles POST /api/v1/query/software_inventory
+// @Summary Query software inventory
+// @Description Query software inventory with filters, aggregations, and sorting
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body query.Query true "Query object"
+// @Success 200 {object} map[string]interface{} "Query results"
+// @Failure 400 {object} api.QueryError "Bad request"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 422 {object} api.QueryError "Validation error"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/software_inventory [post]
 func (h *QueryHandler) QuerySoftwareInventory(w http.ResponseWriter, r *http.Request) {
 	requestID := getRequestID(r)
 	h.executeQuery(w, r, requestID, "software_inventory")
@@ -184,6 +223,19 @@ func (h *QueryHandler) DeleteSavedQuery(w http.ResponseWriter, r *http.Request, 
 }
 
 // QueryUnified handles POST /api/v1/query/unified
+// @Summary Execute unified query with dot-walking syntax
+// @Description Execute cross-entity correlation queries using dot-walking syntax (e.g., software.vendor, findings.severity)
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body string true "Unified query object (JSON with filters, aggregations, sort, limit, offset)"
+// @Success 200 {object} map[string]interface{} "Query results"
+// @Failure 400 {object} api.QueryError "Bad request"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 422 {object} api.QueryError "Validation error"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/unified [post]
 func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
 	requestID := getRequestID(r)
 
@@ -217,18 +269,9 @@ func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse unified query
-	var unifiedQuery struct {
-		PrimaryEntity string              `json:"primary_entity"`
-		Filters       []query.Filter      `json:"filters"`
-		Join          *query.Join         `json:"join"`
-		Aggregations  []query.Aggregation `json:"aggregations,omitempty"`
-		Sort          []query.Sort        `json:"sort,omitempty"`
-		Limit         *int                `json:"limit,omitempty"`
-		Offset        *int                `json:"offset,omitempty"`
-	}
-
-	if err := json.Unmarshal(body, &unifiedQuery); err != nil {
+	// Parse unified query (simplified format - no primary_entity or join needed)
+	var q query.Query
+	if err := json.Unmarshal(body, &q); err != nil {
 		api.WriteErrorResponse(w, &api.QueryError{
 			Code:    "INVALID_JSON",
 			Message: "Invalid JSON in request body",
@@ -237,24 +280,18 @@ func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build Query object
-	q := &query.Query{
-		Filters:      unifiedQuery.Filters,
-		Join:         unifiedQuery.Join,
-		Aggregations: unifiedQuery.Aggregations,
-		Sort:         unifiedQuery.Sort,
-		Limit:        unifiedQuery.Limit,
-		Offset:       unifiedQuery.Offset,
-	}
+	// For unified queries, we always query assets with dot-walking syntax
+	// The translator will auto-detect joins from field prefixes (software.*, findings.*)
+	primaryEntity := "assets"
 
 	// Execute query
 	tenantID := strconv.FormatInt(user.TenantID, 10)
-	result, err := h.executor.Execute(r.Context(), tenantID, unifiedQuery.PrimaryEntity, q)
+	result, err := h.executor.Execute(r.Context(), tenantID, primaryEntity, &q)
 	if err != nil {
 		log.Error().Err(err).
 			Str("request_id", requestID).
 			Str("tenant_id", tenantID).
-			Str("primary_entity", unifiedQuery.PrimaryEntity).
+			Str("primary_entity", primaryEntity).
 			Msg("unified query execution failed")
 
 		errMsg := err.Error()

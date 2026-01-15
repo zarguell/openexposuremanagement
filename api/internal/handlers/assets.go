@@ -11,6 +11,20 @@ import (
 )
 
 // ListAssets handles GET /assets
+// @Summary List assets
+// @Description Get a paginated list of assets with optional search query
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param query query string false "Search query for hostname/IP"
+// @Param limit query int false "Maximum number of results (default: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} map[string]interface{} "Asset list with metadata"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /assets [get]
 func ListAssets(db *sqlx.DB) http.HandlerFunc {
 	return MethodsAllowed(http.MethodGet)(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -57,6 +71,19 @@ func ListAssets(db *sqlx.DB) http.HandlerFunc {
 }
 
 // GetAssetByID handles GET /assets/{id}
+// @Summary Get asset by ID
+// @Description Get detailed information about a specific asset including installed software
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param id path int true "Asset ID"
+// @Success 200 {object} map[string]interface{} "Asset details"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Asset not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Security ApiKeyAuth
+// @Router /assets/{id} [get]
 func GetAssetByID(db *sqlx.DB) http.HandlerFunc {
 	return MethodsAllowed(http.MethodGet)(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

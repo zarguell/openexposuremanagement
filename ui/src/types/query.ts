@@ -5,6 +5,7 @@ export interface Filter {
   field: string;
   operator: string;
   value: any;
+  negate?: boolean; // If true, uses NOT EXISTS for related entity filters (anti-join)
 }
 
 export interface Aggregation {
@@ -39,20 +40,8 @@ export interface QueryResult<T = any> {
 export type EntityType = 'findings' | 'assets';
 
 // Unified Query Types for Cross-Entity Correlation
-export interface JoinCondition {
-  primary: string;
-  joined: string;
-}
-
-export interface Join {
-  entity: 'software_inventory' | 'findings';
-  type: 'left';
-  on: JoinCondition;
-}
-
+// Simplified dot-walking syntax - no explicit JOIN configuration needed
 export interface UnifiedQuery {
-  primary_entity: 'assets'; // Only assets for MVP
-  join?: Join;
   filters?: Filter[];
   aggregations?: Aggregation[];
   sort?: Sort[];
@@ -87,6 +76,16 @@ export const ALLOWED_FIELDS = {
     'first_seen_at',
     'last_seen_at',
     'is_active'
+  ],
+  // Dot-walking fields for related entities
+  'software': [
+    'vendor',
+    'product_name',
+    'version',
+    'cpe_string',
+    'install_path',
+    'first_seen_at',
+    'last_seen_at'
   ]
 } as const;
 
