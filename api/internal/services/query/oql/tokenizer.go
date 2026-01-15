@@ -204,7 +204,7 @@ func readIdentifier(input string, start int) (string, int) {
 func isKeyword(word string) bool {
 	switch strings.ToLower(word) {
 	case "and", "or", "not", "like", "in", "is", "null",
-		"limit", "sort", "asc", "desc":
+		"limit", "offset", "sort", "asc", "desc":
 		return true
 	default:
 		return false
