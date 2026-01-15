@@ -423,6 +423,62 @@ func TestTranslatorJoins(t *testing.T) {
 			t.Errorf("expected joined table qualified field, got: %s", sql)
 		}
 	})
+
+	t.Run("handles NULL values from LEFT JOIN correctly", func(t *testing.T) {
+		translator := query.NewTranslator()
+
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "vendor", Operator: "is_null"},
+			},
+			Join: &query.Join{
+				Entity: "software_inventory",
+				Type:   "left",
+				On: query.JoinCondition{
+					Primary: "id",
+					Joined:  "asset_id",
+				},
+			},
+		}
+
+		sql, _, err := translator.Translate("assets", q)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Should use table alias for joined fields
+		if !contains(sql, "software_inventory.vendor IS NULL") {
+			t.Errorf("expected 'software_inventory.vendor IS NULL', got: %s", sql)
+		}
+	})
+
+	t.Run("handles is_not_null on joined fields", func(t *testing.T) {
+		translator := query.NewTranslator()
+
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "severity", Operator: "is_not_null"},
+			},
+			Join: &query.Join{
+				Entity: "findings",
+				Type:   "left",
+				On: query.JoinCondition{
+					Primary: "id",
+					Joined:  "asset_id",
+				},
+			},
+		}
+
+		sql, _, err := translator.Translate("assets", q)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Should use table alias for joined fields
+		if !contains(sql, "findings.severity IS NOT NULL") {
+			t.Errorf("expected 'findings.severity IS NOT NULL', got: %s", sql)
+		}
+	})
 }
 
 func contains(s, substr string) bool {
