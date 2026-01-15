@@ -50,6 +50,12 @@ type Join struct {
 
 // Validate checks if the join configuration is valid
 func (j *Join) Validate() error {
+	// Prevent circular references (entity joining to itself)
+	// For MVP, we know the primary entity is always "assets" when this is called
+	if j.Entity == "assets" {
+		return fmt.Errorf("circular reference not allowed: cannot join assets to assets")
+	}
+
 	allowedEntities := map[string]bool{
 		"software_inventory": true,
 		"findings":           true,

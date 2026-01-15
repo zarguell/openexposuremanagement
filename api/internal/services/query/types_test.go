@@ -195,4 +195,45 @@ func TestJoinValidation(t *testing.T) {
 			t.Errorf("expected valid query with join, got error: %v", err)
 		}
 	})
+
+	t.Run("circular reference fails", func(t *testing.T) {
+		join := query.Join{
+			Entity: "assets",
+			Type:   "left",
+			On: query.JoinCondition{
+				Primary: "id",
+				Joined:  "asset_id",
+			},
+		}
+
+		if err := join.Validate(); err == nil {
+			t.Error("expected error for circular reference, got nil")
+		} else {
+			// Verify we get a specific circular reference error
+			expectedMsg := "circular reference"
+			if !contains(err.Error(), expectedMsg) {
+				t.Errorf("expected error containing %q, got %q", expectedMsg, err.Error())
+			}
+		}
+	})
+
+	t.Run("query with circular reference fails", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "is_active", Operator: "eq", Value: true},
+			},
+			Join: &query.Join{
+				Entity: "assets",
+				Type:   "left",
+				On: query.JoinCondition{
+					Primary: "id",
+					Joined:  "asset_id",
+				},
+			},
+		}
+
+		if err := q.Validate(); err == nil {
+			t.Error("expected error for circular reference, got nil")
+		}
+	})
 }
