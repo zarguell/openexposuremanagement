@@ -78,15 +78,18 @@ var allowedFields = map[string]map[string]bool{
 // allowedOperators defines whitelisted operators
 // Note: Only operators implemented by Translator should be listed here
 var allowedOperators = map[string]bool{
-	"eq":         true,
-	"neq":        true,
-	"in":         true,
-	"like":       true,
-	"gt":         true,
-	"gte":        true,
-	"lt":         true,
-	"lte":        true,
-	"is_null":    true,
+	"eq":          true,
+	"neq":         true,
+	"in":          true,
+	"not_in":      true,
+	"like":        true,
+	"not_like":    true,
+	"gt":          true,
+	"gte":         true,
+	"lt":          true,
+	"lte":         true,
+	"between":     true,
+	"is_null":     true,
 	"is_not_null": true,
 }
 
@@ -109,6 +112,24 @@ func (v *Validator) Validate(entityType string, q *Query) error {
 	fields, ok := allowedFields[entityType]
 	if !ok {
 		return fmt.Errorf("invalid entity type: %s", entityType)
+	}
+
+	// For unified queries with joins, merge allowed fields from both entities
+	if q.Join != nil {
+		joinedFields, ok := allowedFields[q.Join.Entity]
+		if !ok {
+			return fmt.Errorf("invalid joined entity type: %s", q.Join.Entity)
+		}
+		// Merge fields - create a new map with combined fields
+		// Note: We don't prefix fields because the translator handles qualification
+		mergedFields := make(map[string]bool)
+		for k, v := range fields {
+			mergedFields[k] = v
+		}
+		for k, v := range joinedFields {
+			mergedFields[k] = v
+		}
+		fields = mergedFields
 	}
 
 	// Validate each filter
