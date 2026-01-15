@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './ApiDocs.css';
 
 interface ApiEndpoint {
@@ -476,6 +476,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     auth: true,
     requestBody: {
       contentType: 'application/json',
+      schema: {},
       example: {
         filters: [{ field: 'is_active', operator: 'eq', value: true }],
         limit: 50,
@@ -490,6 +491,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     auth: true,
     requestBody: {
       contentType: 'application/json',
+      schema: {},
       example: {
         filters: [{ field: 'vendor', operator: 'eq', value: 'Microsoft' }],
         limit: 50,
@@ -504,6 +506,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     auth: true,
     requestBody: {
       contentType: 'application/json',
+      schema: {},
       example: {
         primary_entity: 'assets',
         join: {

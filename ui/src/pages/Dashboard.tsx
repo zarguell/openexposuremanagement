@@ -6,6 +6,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 // NOTE: Unified query widgets (UNIFIED_QUERY_WIDGETS) are available but disabled by default
 // for performance reasons. JOIN queries can be slow on large datasets.
 // To enable, set disabled: false in dashboard.ts and add them to the widgets array.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _unifiedQueryWidgetsAvailable = UNIFIED_QUERY_WIDGETS;
 
 function Dashboard() {
   const { results, isLoading, isError, widgets, errors } = useDashboardQueries(DEFAULT_DASHBOARD);

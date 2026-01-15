@@ -60,7 +60,7 @@ function UnifiedQueryResults({
     key: key,
     label: formatColumnName(key),
     sortable: true,
-    render: (value: any, item: JoinedData) => formatCellValue(key, value, item),
+    render: (value: any) => formatCellValue(key, value),
   }));
 
   const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
@@ -123,6 +123,7 @@ function UnifiedQueryResults({
       </div>
 
       <QueryResultsTable<JoinedData>
+        entity="assets"
         result={result}
         columns={columns}
         sort={sort}
@@ -157,7 +158,7 @@ function formatColumnName(key: string): string {
  * Format cell value for display
  * Handles special formatting for certain fields
  */
-function formatCellValue(key: string, value: any, item: JoinedData): React.ReactNode {
+function formatCellValue(key: string, value: any): React.ReactNode {
   // Handle NULL values from LEFT JOIN
   if (value === null || value === undefined) {
     return <span className="null-value">—</span>;
