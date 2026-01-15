@@ -12,12 +12,53 @@ var entityToTable = map[string]string{
 	"software_inventory":  "software_inventory", // Uses the "software_inventory" view
 }
 
+// Fields that belong to joined entities
+var joinedEntityFields = map[string]map[string]bool{
+	"software_inventory": {
+		"vendor":       true,
+		"product_name": true,
+		"version":      true,
+		"cpe_string":   true,
+		"install_path": true,
+	},
+	"findings": {
+		"severity":          true,
+		"scanner_status":    true,
+		"effective_status":  true,
+		"cve":               true,
+		"epss_score":        true,
+		"is_kev":            true,
+		"first_observed_at": true,
+		"last_observed_at":  true,
+	},
+}
+
 // Translator converts Query objects to SQL
 type Translator struct{}
 
 // NewTranslator creates a new Translator
 func NewTranslator() *Translator {
 	return &Translator{}
+}
+
+// qualifyField adds a table alias prefix to a field name based on the join context.
+// If the field belongs to a joined entity, it prefixes it with that entity's table name.
+// Otherwise, it prefixes it with the primary entity's table name.
+func (tr *Translator) qualifyField(field string, entityType string, join *Join) string {
+	// If there's no join, all fields belong to the primary entity
+	if join == nil {
+		return fmt.Sprintf("%s.%s", entityType, field)
+	}
+
+	// Check if field belongs to joined entity
+	if fields, ok := joinedEntityFields[join.Entity]; ok {
+		if fields[field] {
+			return fmt.Sprintf("%s.%s", join.Entity, field)
+		}
+	}
+
+	// Field belongs to primary entity
+	return fmt.Sprintf("%s.%s", entityType, field)
 }
 
 // Translate converts a validated Query object to parameterized SQL.
@@ -39,13 +80,16 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 		var part string
 		var newArgs []interface{}
 
+		// Qualify field name with table alias
+		qualifiedField := tr.qualifyField(f.Field, entityType, q.Join)
+
 		switch f.Operator {
 		case "eq":
-			part = fmt.Sprintf("%s = $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s = $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "neq":
-			part = fmt.Sprintf("%s != $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s != $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "in":
@@ -60,31 +104,31 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 				newArgs[i] = v
 				argPos++
 			}
-			part = fmt.Sprintf("%s IN (%s)", f.Field, strings.Join(placeholders, ", "))
+			part = fmt.Sprintf("%s IN (%s)", qualifiedField, strings.Join(placeholders, ", "))
 		case "like":
-			part = fmt.Sprintf("%s LIKE $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s LIKE $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "gt":
-			part = fmt.Sprintf("%s > $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s > $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "gte":
-			part = fmt.Sprintf("%s >= $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s >= $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "lt":
-			part = fmt.Sprintf("%s < $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s < $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "lte":
-			part = fmt.Sprintf("%s <= $%d", f.Field, argPos)
+			part = fmt.Sprintf("%s <= $%d", qualifiedField, argPos)
 			newArgs = []interface{}{f.Value}
 			argPos++
 		case "is_null":
-			part = fmt.Sprintf("%s IS NULL", f.Field)
+			part = fmt.Sprintf("%s IS NULL", qualifiedField)
 		case "is_not_null":
-			part = fmt.Sprintf("%s IS NOT NULL", f.Field)
+			part = fmt.Sprintf("%s IS NOT NULL", qualifiedField)
 		default:
 			return "", nil, fmt.Errorf("unsupported operator: %s", f.Operator)
 		}
@@ -109,13 +153,15 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 			switch agg.Type {
 			case "count":
 				if agg.Field != "" {
-					selectParts = append(selectParts, fmt.Sprintf("COUNT(%s)", agg.Field))
+					qualifiedField := tr.qualifyField(agg.Field, entityType, q.Join)
+					selectParts = append(selectParts, fmt.Sprintf("COUNT(%s)", qualifiedField))
 				} else {
 					selectParts = append(selectParts, "COUNT(*)")
 				}
 			case "group_by":
-				selectParts = append(selectParts, agg.Field)
-				groupByFields = append(groupByFields, agg.Field)
+				qualifiedField := tr.qualifyField(agg.Field, entityType, q.Join)
+				selectParts = append(selectParts, qualifiedField)
+				groupByFields = append(groupByFields, qualifiedField)
 			default:
 				return "", nil, fmt.Errorf("unsupported aggregation type: %s", agg.Type)
 			}
@@ -132,7 +178,8 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 	if len(q.Sort) > 0 {
 		var sortParts []string
 		for _, s := range q.Sort {
-			sortParts = append(sortParts, fmt.Sprintf("%s %s", s.Field, strings.ToUpper(s.Order)))
+			qualifiedField := tr.qualifyField(s.Field, entityType, q.Join)
+			sortParts = append(sortParts, fmt.Sprintf("%s %s", qualifiedField, strings.ToUpper(s.Order)))
 		}
 		orderByClause = "ORDER BY " + strings.Join(sortParts, ", ")
 	}
@@ -156,7 +203,21 @@ func (tr *Translator) Translate(entityType string, q *Query) (string, []interfac
 	if tableName == "" {
 		tableName = entityType // fallback to entity type if not in map
 	}
-	queryParts = append(queryParts, fmt.Sprintf("SELECT %s FROM %s", selectClause, tableName))
+
+	// Build FROM clause with optional LEFT JOIN
+	fromClause := fmt.Sprintf("FROM %s AS %s", tableName, entityType)
+	if q.Join != nil {
+		joinTable := entityToTable[q.Join.Entity]
+		if joinTable == "" {
+			joinTable = q.Join.Entity // fallback to entity name if not in map
+		}
+		onClause := fmt.Sprintf("%s.%s = %s.%s",
+			entityType, q.Join.On.Primary,
+			q.Join.Entity, q.Join.On.Joined)
+		fromClause += fmt.Sprintf(" LEFT JOIN %s AS %s ON %s", joinTable, q.Join.Entity, onClause)
+	}
+
+	queryParts = append(queryParts, fmt.Sprintf("SELECT %s %s", selectClause, fromClause))
 	if len(whereParts) > 0 {
 		queryParts = append(queryParts, "WHERE "+strings.Join(whereParts, " AND "))
 	}
