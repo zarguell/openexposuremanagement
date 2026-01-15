@@ -171,7 +171,7 @@ func (p *Parser) parseNotExpression() ([]*Node, error) {
 				Type: NodeTypeExpression,
 				Children: append([]*Node{
 					{Type: NodeTypeLogicalOp, Value: op.Value},
-				}, operand[0].Children...),
+				}, operand[0]),
 			},
 		}, nil
 	}
