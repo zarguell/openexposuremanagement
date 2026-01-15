@@ -418,6 +418,192 @@ func TestSavedQueries(t *testing.T) {
 	})
 }
 
+// TestQueryUnified tests unified query endpoint with JOIN support
+func TestQueryUnified(t *testing.T) {
+	t.Run("valid join query returns results", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{
+					{
+						"id":             int64(1),
+						"canonical_name": "server1.local",
+						"vendor":         "Microsoft",
+						"product_name":   "Windows Server",
+					},
+				},
+				Meta: &query.QueryMeta{
+					TotalRows:       1,
+					ExecutionTimeMs: 25,
+					HasMore:         false,
+				},
+			},
+		}
+
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"primary_entity": "assets",
+			"join": {
+				"entity": "software_inventory",
+				"type": "left",
+				"on": {"primary": "id", "joined": "asset_id"}
+			},
+			"filters": [
+				{"field": "vendor", "operator": "eq", "value": "Microsoft"}
+			],
+			"limit": 100
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-unified")
+
+		w := httptest.NewRecorder()
+		handler.QueryUnified(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp["data"] == nil {
+			t.Fatal("expected data field in response")
+		}
+	})
+
+	t.Run("invalid JSON returns 400", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{invalid json`
+		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-unified-400")
+
+		w := httptest.NewRecorder()
+		handler.QueryUnified(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("got status %d, want 400", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "INVALID_JSON" {
+			t.Errorf("got error code %v, want INVALID_JSON", errResp["code"])
+		}
+	})
+
+	t.Run("missing user context returns 401", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"primary_entity": "assets",
+			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		handler.QueryUnified(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("got status %d, want 401", w.Code)
+		}
+	})
+
+	t.Run("validation error returns 422", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			err: errors.New("validation error: unsupported join entity 'unknown_entity'"),
+		}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"primary_entity": "assets",
+			"join": {
+				"entity": "unknown_entity",
+				"type": "left"
+			}
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-unified-422")
+
+		w := httptest.NewRecorder()
+		handler.QueryUnified(w, req)
+
+		if w.Code != http.StatusUnprocessableEntity {
+			t.Errorf("got status %d, want 422", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "VALIDATION_ERROR" {
+			t.Errorf("got error code %v, want VALIDATION_ERROR", errResp["code"])
+		}
+	})
+
+	t.Run("query execution error returns 500", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			err: errors.New("database connection failed"),
+		}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"primary_entity": "assets",
+			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-unified-500")
+
+		w := httptest.NewRecorder()
+		handler.QueryUnified(w, req)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("got status %d, want 500", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "QUERY_FAILED" {
+			t.Errorf("got error code %v, want QUERY_FAILED", errResp["code"])
+		}
+	})
+}
+
 // Helper function to set user context for query tests
 func setQueryUserContextWithRequestID(req *http.Request, tenantID int64, requestID string) *http.Request {
 	userCtx := &auth.UserContext{

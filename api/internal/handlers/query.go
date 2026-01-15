@@ -182,3 +182,108 @@ func (h *QueryHandler) DeleteSavedQuery(w http.ResponseWriter, r *http.Request, 
 		Message: "Saved query deletion not yet implemented",
 	}, requestID, http.StatusNotImplemented)
 }
+
+// QueryUnified handles POST /api/v1/query/unified
+func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+
+	// Get user context
+	userCtx := r.Context().Value(auth.UserContextKey)
+	if userCtx == nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "UNAUTHORIZED",
+			Message: "User context not found",
+		}, requestID, http.StatusUnauthorized)
+		return
+	}
+
+	user, ok := userCtx.(*auth.UserContext)
+	if !ok {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_CONTEXT",
+			Message: "Invalid user context",
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Parse request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Failed to read request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Parse unified query
+	var unifiedQuery struct {
+		PrimaryEntity string              `json:"primary_entity"`
+		Filters       []query.Filter      `json:"filters"`
+		Join          *query.Join         `json:"join"`
+		Aggregations  []query.Aggregation `json:"aggregations,omitempty"`
+		Sort          []query.Sort        `json:"sort,omitempty"`
+		Limit         *int                `json:"limit,omitempty"`
+		Offset        *int                `json:"offset,omitempty"`
+	}
+
+	if err := json.Unmarshal(body, &unifiedQuery); err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_JSON",
+			Message: "Invalid JSON in request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Build Query object
+	q := &query.Query{
+		Filters:      unifiedQuery.Filters,
+		Join:         unifiedQuery.Join,
+		Aggregations: unifiedQuery.Aggregations,
+		Sort:         unifiedQuery.Sort,
+		Limit:        unifiedQuery.Limit,
+		Offset:       unifiedQuery.Offset,
+	}
+
+	// Execute query
+	tenantID := strconv.FormatInt(user.TenantID, 10)
+	result, err := h.executor.Execute(r.Context(), tenantID, unifiedQuery.PrimaryEntity, q)
+	if err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Str("tenant_id", tenantID).
+			Str("primary_entity", unifiedQuery.PrimaryEntity).
+			Msg("unified query execution failed")
+
+		errMsg := err.Error()
+		if strings.HasPrefix(errMsg, "validation error:") {
+			api.WriteErrorResponse(w, &api.QueryError{
+				Code:    "VALIDATION_ERROR",
+				Message: "Query validation failed",
+				Details: map[string]interface{}{"error": errMsg},
+			}, requestID, http.StatusUnprocessableEntity)
+			return
+		}
+
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "QUERY_FAILED",
+			Message: "Query execution failed",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Return results
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": result.Data,
+		"meta": result.Meta,
+	}); err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Msg("failed to encode unified query response")
+	}
+}
