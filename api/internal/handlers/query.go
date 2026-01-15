@@ -21,14 +21,23 @@ type ExecutorInterface interface {
 	Execute(ctx context.Context, tenantID string, entityType string, q *query.Query) (*query.QueryResult, error)
 }
 
+// TranslatorInterface defines the query translator interface
+type TranslatorInterface interface {
+	Translate(entityType string, q *query.Query) (string, []interface{}, error)
+}
+
 // QueryHandler handles query-related endpoints
 type QueryHandler struct {
-	executor ExecutorInterface
+	executor   ExecutorInterface
+	translator TranslatorInterface
 }
 
 // NewQueryHandler creates a new QueryHandler
-func NewQueryHandler(executor ExecutorInterface) *QueryHandler {
-	return &QueryHandler{executor: executor}
+func NewQueryHandler(executor ExecutorInterface, translator TranslatorInterface) *QueryHandler {
+	return &QueryHandler{
+		executor:   executor,
+		translator: translator,
+	}
 }
 
 // getRequestID extracts request ID from context (set by middleware)
@@ -465,6 +474,62 @@ func (h *QueryHandler) QueryOQL(w http.ResponseWriter, r *http.Request) {
 			Str("request_id", requestID).
 			Msg("failed to encode OQL query response")
 	}
+}
+
+// ValidateOQL handles POST /api/v1/query/oql/validate
+// @Summary Validate OQL query syntax
+// @Description Validates OQL query syntax without executing it
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body object {query: string} true "OQL query string"
+// @Success 200 {object} map[string]interface{} "Validation result"
+// @Failure 400 {object} api.QueryError "Bad request"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Security ApiKeyAuth
+// @Router /query/oql/validate [post]
+func (h *QueryHandler) ValidateOQL(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+
+	// Parse request body
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Invalid request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Validate query field is present
+	if req.Query == "" {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Query is required",
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Try to parse OQL
+	_, err := oql.ParseOQL(req.Query)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid":  false,
+			"errors": []string{err.Error()},
+		})
+		return
+	}
+
+	// Success
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"valid":  true,
+		"errors": []string{},
+	})
 }
 
 // convertUnifiedQueryToQuery converts UnifiedQuery to Query

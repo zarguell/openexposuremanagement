@@ -70,12 +70,15 @@ func (s *Server) registerRoutes() {
 	if s.cfg.LogLevel == 0 || s.cfg.IsDevelopment() {
 		queryExecutor = query.WithLogging(queryExecutor, log.Logger)
 	}
-	queryHandler := handlers.NewQueryHandler(queryExecutor)
+	// Get translator for explain endpoint
+	queryTranslator := query.NewTranslator()
+	queryHandler := handlers.NewQueryHandler(queryExecutor, queryTranslator)
 	apiV1.HandleFunc("/query/findings", handlers.RequireAuth(queryHandler.QueryFindings))
 	apiV1.HandleFunc("/query/assets", handlers.RequireAuth(queryHandler.QueryAssets))
 	apiV1.HandleFunc("/query/software_inventory", handlers.RequireAuth(queryHandler.QuerySoftwareInventory))
 	apiV1.HandleFunc("/query/unified", handlers.RequireAuth(queryHandler.QueryUnified))
 	apiV1.HandleFunc("/query/oql", handlers.RequireAuth(queryHandler.QueryOQL))
+	apiV1.HandleFunc("/query/oql/validate", handlers.RequireAuth(queryHandler.ValidateOQL))
 
 	// Saved query detail endpoints with name parameter (stubs for next task)
 	// NOTE: Must register /query/saved/ before /query/saved to avoid pattern conflicts
