@@ -114,3 +114,85 @@ func TestQueryValidation(t *testing.T) {
 		}
 	})
 }
+
+func TestJoinValidation(t *testing.T) {
+	t.Run("valid left join passes", func(t *testing.T) {
+		join := query.Join{
+			Entity: "software_inventory",
+			Type:   "left",
+			On: query.JoinCondition{
+				Primary: "id",
+				Joined:  "asset_id",
+			},
+		}
+
+		if err := join.Validate(); err != nil {
+			t.Errorf("expected valid join, got error: %v", err)
+		}
+	})
+
+	t.Run("invalid join type fails", func(t *testing.T) {
+		join := query.Join{
+			Entity: "software_inventory",
+			Type:   "inner",
+			On: query.JoinCondition{
+				Primary: "id",
+				Joined:  "asset_id",
+			},
+		}
+
+		if err := join.Validate(); err == nil {
+			t.Error("expected error for invalid join type, got nil")
+		}
+	})
+
+	t.Run("unsupported join entity fails", func(t *testing.T) {
+		join := query.Join{
+			Entity: "unsupported_entity",
+			Type:   "left",
+			On: query.JoinCondition{
+				Primary: "id",
+				Joined:  "asset_id",
+			},
+		}
+
+		if err := join.Validate(); err == nil {
+			t.Error("expected error for unsupported entity, got nil")
+		}
+	})
+
+	t.Run("empty join condition fails", func(t *testing.T) {
+		join := query.Join{
+			Entity: "software_inventory",
+			Type:   "left",
+			On: query.JoinCondition{
+				Primary: "",
+				Joined:  "",
+			},
+		}
+
+		if err := join.Validate(); err == nil {
+			t.Error("expected error for empty join condition, got nil")
+		}
+	})
+
+	t.Run("query with valid join passes", func(t *testing.T) {
+		q := &query.Query{
+			Filters: []query.Filter{
+				{Field: "is_active", Operator: "eq", Value: true},
+			},
+			Join: &query.Join{
+				Entity: "software_inventory",
+				Type:   "left",
+				On: query.JoinCondition{
+					Primary: "id",
+					Joined:  "asset_id",
+				},
+			},
+		}
+
+		if err := q.Validate(); err != nil {
+			t.Errorf("expected valid query with join, got error: %v", err)
+		}
+	})
+}

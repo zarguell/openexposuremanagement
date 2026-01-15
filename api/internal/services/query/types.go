@@ -2,12 +2,14 @@ package query
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
 // Query represents a JSON query definition
 type Query struct {
 	Filters      []Filter      `json:"filters"`
+	Join         *Join         `json:"join,omitempty"`
 	Aggregations []Aggregation `json:"aggregations,omitempty"`
 	Sort         []Sort        `json:"sort,omitempty"`
 	Limit        *int          `json:"limit,omitempty"`
@@ -33,6 +35,41 @@ type Sort struct {
 	Order string `json:"order"` // asc, desc
 }
 
+// JoinCondition defines the ON clause for a join
+type JoinCondition struct {
+	Primary string `json:"primary"` // Field from primary entity
+	Joined  string `json:"joined"`  // Field from joined entity
+}
+
+// Join defines a join to another entity
+type Join struct {
+	Entity string        `json:"entity"` // Entity to join (software_inventory, findings)
+	Type   string        `json:"type"`   // "left" only for MVP
+	On     JoinCondition `json:"on"`     // Join condition
+}
+
+// Validate checks if the join configuration is valid
+func (j *Join) Validate() error {
+	allowedEntities := map[string]bool{
+		"software_inventory": true,
+		"findings":           true,
+	}
+
+	if !allowedEntities[j.Entity] {
+		return fmt.Errorf("unsupported join entity: %s", j.Entity)
+	}
+
+	if j.Type != "left" {
+		return fmt.Errorf("unsupported join type: %s (only 'left' allowed)", j.Type)
+	}
+
+	if j.On.Primary == "" || j.On.Joined == "" {
+		return fmt.Errorf("join condition must specify both 'primary' and 'joined' fields")
+	}
+
+	return nil
+}
+
 // Validate performs basic validation on the query
 func (q *Query) Validate() error {
 	if len(q.Filters) == 0 {
@@ -45,6 +82,13 @@ func (q *Query) Validate() error {
 		}
 		if strings.TrimSpace(f.Operator) == "" {
 			return errors.New("filter operator cannot be empty")
+		}
+	}
+
+	// Validate join if present
+	if q.Join != nil {
+		if err := q.Join.Validate(); err != nil {
+			return err
 		}
 	}
 
