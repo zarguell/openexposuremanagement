@@ -237,3 +237,35 @@ Base: `/api/v1`
 - **Software inventory ingested via VM findings payload with CPE normalization.**
 - **Software catalog browsable with filters for vendor/product/version.**
 - **Query framework supports software+findings joins (e.g., "assets with Log4j and CVE-2021-44228").**
+
+---
+
+## Unified Query API (Cross-Entity Correlation)
+
+### Query JSON Schema
+```json
+{
+  "primary_entity": "assets",
+  "join": {
+    "entity": "software_inventory",
+    "type": "left",
+    "on": {
+      "primary": "id",
+      "joined": "asset_id"
+    }
+  },
+  "filters": [
+    {"field": "is_active", "operator": "eq", "value": true}
+  ],
+  "limit": 100
+}
+```
+
+### Supported Entity Relationships
+- `assets` LEFT JOIN `software_inventory` ON `assets.id = software_inventory.asset_id`
+- `assets` LEFT JOIN `findings` ON `assets.id = findings.asset_id`
+
+### Performance Requirements
+- Max 5,000 result rows
+- 5-second query timeout
+- Primary entity filters required
