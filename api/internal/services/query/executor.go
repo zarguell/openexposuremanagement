@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -10,7 +11,13 @@ import (
 )
 
 // MaxQueryLimit is the maximum number of rows allowed in a single query
-const MaxQueryLimit = 1000
+const MaxQueryLimit = 5000
+
+// QueryTimeout is the maximum duration for query execution
+const QueryTimeout = 5 * time.Second
+
+// SlowQueryThreshold is the duration above which queries are logged as slow
+const SlowQueryThreshold = 1 * time.Second
 
 // QueryResult represents the result of a query execution
 type QueryResult struct {
@@ -53,6 +60,10 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 		return nil, fmt.Errorf("limit exceeds maximum of %d", MaxQueryLimit)
 	}
 
+	// Add timeout to context
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
+
 	// Translate to SQL
 	sql, args, err := e.translator.Translate(entityType, q)
 	if err != nil {
@@ -89,6 +100,10 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 	// Execute query
 	rows, err := e.db.QueryxContext(ctx, sql, args...)
 	if err != nil {
+		// Check if context was cancelled
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("query timeout after %v", QueryTimeout)
+		}
 		return nil, fmt.Errorf("query execution error: %w", err)
 	}
 	defer rows.Close()
@@ -108,13 +123,19 @@ func (e *Executor) Execute(ctx context.Context, tenantID, entityType string, q *
 	}
 
 	// Calculate execution time
-	executionTime := time.Since(startTime).Milliseconds()
+	executionTime := time.Since(startTime)
+
+	// Log slow queries
+	if executionTime > SlowQueryThreshold {
+		log.Printf("[SLOW QUERY] Entity: %s, Duration: %v, Tenant: %s, SQL: %s",
+			entityType, executionTime, tenantID, sql)
+	}
 
 	return &QueryResult{
 		Data: data,
 		Meta: &QueryMeta{
 			TotalRows:       int64(len(data)),
-			ExecutionTimeMs: executionTime,
+			ExecutionTimeMs: executionTime.Milliseconds(),
 			HasMore:         q.Limit != nil && len(data) == *q.Limit,
 		},
 	}, nil
