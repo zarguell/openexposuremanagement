@@ -38,6 +38,33 @@ export interface QueryResult<T = any> {
 
 export type EntityType = 'findings' | 'assets';
 
+// Unified Query Types for Cross-Entity Correlation
+export interface JoinCondition {
+  primary: string;
+  joined: string;
+}
+
+export interface Join {
+  entity: 'software_inventory' | 'findings';
+  type: 'left';
+  on: JoinCondition;
+}
+
+export interface UnifiedQuery {
+  primary_entity: 'assets'; // Only assets for MVP
+  join?: Join;
+  filters?: Filter[];
+  aggregations?: Aggregation[];
+  sort?: Sort[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface UnifiedQueryResult {
+  data: any[];
+  meta: QueryMeta;
+}
+
 export const ALLOWED_FIELDS = {
   findings: [
     'severity',

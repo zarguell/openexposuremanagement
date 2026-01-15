@@ -1,4 +1,5 @@
 import { UserManager } from 'oidc-client-ts';
+import type { UnifiedQuery } from '../types/query';
 
 // API base URL
 // Use /api prefix for nginx proxy in production
@@ -180,6 +181,17 @@ export const apiClient = {
     });
     if (!response.ok) {
       throw new Error(`Failed to execute query: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async queryUnified(query: UnifiedQuery) {
+    const response = await authenticatedFetch('/v1/query/unified', {
+      method: 'POST',
+      body: JSON.stringify(query),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to execute unified query: ${response.statusText}`);
     }
     return response.json();
   },
