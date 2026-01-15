@@ -11,6 +11,7 @@ import (
 	"github.com/openexposuremanagement/oem/internal/api"
 	"github.com/openexposuremanagement/oem/internal/auth"
 	"github.com/openexposuremanagement/oem/internal/services/query"
+	"github.com/openexposuremanagement/oem/internal/services/query/oql"
 	"github.com/rs/zerolog/log"
 )
 
@@ -323,4 +324,170 @@ func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
 			Str("request_id", requestID).
 			Msg("failed to encode unified query response")
 	}
+}
+
+// QueryOQL handles POST /api/v1/query/oql
+// @Summary Execute OQL (Open Query Language) query
+// @Description Execute queries using OQL syntax (SQL-like query language for assets, software, findings)
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body object {query: string} true "OQL query string"
+// @Success 200 {object} map[string]interface{} "Query results"
+// @Failure 400 {object} api.QueryError "Bad request or OQL parse error"
+// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Failure 500 {object} api.QueryError "Internal server error"
+// @Security ApiKeyAuth
+// @Router /query/oql [post]
+func (h *QueryHandler) QueryOQL(w http.ResponseWriter, r *http.Request) {
+	requestID := getRequestID(r)
+
+	// Get user context
+	userCtx := r.Context().Value(auth.UserContextKey)
+	if userCtx == nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "UNAUTHORIZED",
+			Message: "User context not found",
+		}, requestID, http.StatusUnauthorized)
+		return
+	}
+
+	user, ok := userCtx.(*auth.UserContext)
+	if !ok {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_CONTEXT",
+			Message: "Invalid user context",
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Parse request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Failed to read request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Parse OQL request (expects {"query": "is_active = true limit 10"})
+	var reqBody struct {
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_JSON",
+			Message: "Invalid JSON in request body",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Validate query field is present
+	if reqBody.Query == "" {
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "INVALID_REQUEST",
+			Message: "Missing 'query' field in request body",
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Parse OQL query string to JSON query
+	jsonQuery, err := oql.ParseOQL(reqBody.Query)
+	if err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Str("oql_query", reqBody.Query).
+			Msg("OQL parsing failed")
+
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "OQL_PARSE_ERROR",
+			Message: "Failed to parse OQL query",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusBadRequest)
+		return
+	}
+
+	// Convert UnifiedQuery to Query (the executor expects Query)
+	var q query.Query
+	if err := convertUnifiedQueryToQuery(jsonQuery, &q); err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Msg("Failed to convert unified query to query")
+
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "QUERY_CONVERSION_ERROR",
+			Message: "Failed to convert query",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Execute query (always against assets for MVP)
+	tenantID := strconv.FormatInt(user.TenantID, 10)
+	primaryEntity := "assets"
+	result, err := h.executor.Execute(r.Context(), tenantID, primaryEntity, &q)
+	if err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Str("tenant_id", tenantID).
+			Str("oql_query", reqBody.Query).
+			Msg("OQL query execution failed")
+
+		errMsg := err.Error()
+		if strings.HasPrefix(errMsg, "validation error:") {
+			api.WriteErrorResponse(w, &api.QueryError{
+				Code:    "VALIDATION_ERROR",
+				Message: "Query validation failed",
+				Details: map[string]interface{}{"error": errMsg},
+			}, requestID, http.StatusUnprocessableEntity)
+			return
+		}
+
+		api.WriteErrorResponse(w, &api.QueryError{
+			Code:    "QUERY_FAILED",
+			Message: "Query execution failed",
+			Details: map[string]interface{}{"error": err.Error()},
+		}, requestID, http.StatusInternalServerError)
+		return
+	}
+
+	// Return results
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": result.Data,
+		"meta": result.Meta,
+	}); err != nil {
+		log.Error().Err(err).
+			Str("request_id", requestID).
+			Msg("failed to encode OQL query response")
+	}
+}
+
+// convertUnifiedQueryToQuery converts UnifiedQuery to Query
+func convertUnifiedQueryToQuery(uq *query.UnifiedQuery, q *query.Query) error {
+	// Convert filters
+	if len(uq.Filters) > 0 {
+		q.Filters = uq.Filters
+	}
+
+	// Convert sort (from *Sort to []Sort)
+	if uq.Sort != nil {
+		q.Sort = []query.Sort{*uq.Sort}
+	}
+
+	// Convert limit (from int to *int)
+	if uq.Limit > 0 {
+		q.Limit = &uq.Limit
+	}
+
+	// Convert offset (from int to *int)
+	if uq.Offset > 0 {
+		q.Offset = &uq.Offset
+	}
+
+	return nil
 }

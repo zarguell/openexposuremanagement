@@ -604,6 +604,217 @@ func TestQueryUnified(t *testing.T) {
 	})
 }
 
+// TestQueryOQL tests OQL query endpoint
+func TestQueryOQL(t *testing.T) {
+	t.Run("valid OQL query returns results", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{
+					{
+						"id":             int64(1),
+						"canonical_name": "server1.local",
+						"is_active":      true,
+					},
+				},
+				Meta: &query.QueryMeta{
+					TotalRows:       1,
+					ExecutionTimeMs: 15,
+					HasMore:         false,
+				},
+			},
+		}
+
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"query": "is_active = true limit 10"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-oql")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp["data"] == nil {
+			t.Fatal("expected data field in response")
+		}
+
+		data, ok := resp["data"].([]interface{})
+		if !ok || len(data) != 1 {
+			t.Fatalf("expected 1 data row, got %d", len(data))
+		}
+	})
+
+	t.Run("OQL with dot-walking syntax", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{
+					{
+						"id":             int64(1),
+						"canonical_name": "server1.local",
+						"vendor":         "Microsoft",
+						"product_name":   "Windows Server",
+					},
+				},
+				Meta: &query.QueryMeta{
+					TotalRows:       1,
+					ExecutionTimeMs: 20,
+					HasMore:         false,
+				},
+			},
+		}
+
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"query": "software.vendor = \"Microsoft\" limit 10"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-oql-dotwalk")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
+		}
+	})
+
+	t.Run("invalid OQL query returns 400", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"query": "invalid syntax here !!!"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-oql-invalid")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("got status %d, want 400", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "OQL_PARSE_ERROR" {
+			t.Errorf("got error code %v, want OQL_PARSE_ERROR", errResp["code"])
+		}
+	})
+
+	t.Run("missing query field returns 400", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{"limit": 50}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-oql-no-query")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("got status %d, want 400", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "INVALID_REQUEST" {
+			t.Errorf("got error code %v, want INVALID_REQUEST", errResp["code"])
+		}
+	})
+
+	t.Run("missing user context returns 401", func(t *testing.T) {
+		executor := &mockQueryExecutor{}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"query": "is_active = true"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("got status %d, want 401", w.Code)
+		}
+	})
+
+	t.Run("query execution error returns 500", func(t *testing.T) {
+		executor := &mockQueryExecutor{
+			err: errors.New("database connection failed"),
+		}
+		handler := NewQueryHandler(executor)
+
+		body := `{
+			"query": "is_active = true"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/query/oql", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req = setQueryUserContextWithRequestID(req, 1, "test-req-oql-exec-error")
+
+		w := httptest.NewRecorder()
+		handler.QueryOQL(w, req)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("got status %d, want 500", w.Code)
+		}
+
+		var resp map[string]interface{}
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		errResp, ok := resp["error"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected error field in response")
+		}
+
+		if errResp["code"] != "QUERY_FAILED" {
+			t.Errorf("got error code %v, want QUERY_FAILED", errResp["code"])
+		}
+	})
+}
+
 // Helper function to set user context for query tests
 func setQueryUserContextWithRequestID(req *http.Request, tenantID int64, requestID string) *http.Request {
 	userCtx := &auth.UserContext{
