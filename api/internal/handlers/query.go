@@ -337,15 +337,23 @@ func (h *QueryHandler) QueryUnified(w http.ResponseWriter, r *http.Request) {
 
 // QueryOQL handles POST /api/v1/query/oql
 // @Summary Execute OQL (Open Query Language) query
-// @Description Execute queries using OQL syntax (SQL-like query language for assets, software, findings)
+// @Description Execute queries using OQL syntax - a concise, SQL-like query language that reduces boilerplate by ~70% compared to JSON queries.
+// @Description OQL Syntax:
+// @Description - Filters: `field = value`, `field != value`, `field > value`, `field < value`, `field in (1,2,3)`
+// @Description - Logical: `condition1 AND condition2`, `condition1 OR condition2`, `NOT condition`
+// @Description - Dot-walking: `software.vendor = "Microsoft"`, `findings.severity = "critical"`
+// @Description - Anti-join: `NOT software.vendor = "CrowdStrike"` (assets without specific software)
+// @Description - Sorting: `order by field asc|desc`
+// @Description - Pagination: `limit 10 offset 20`
+// @Description Example: `is_active = true AND software.vendor = "Microsoft" order by canonical_name limit 10`
 // @Tags query
 // @Accept json
 // @Produce json
-// @Param request body object {query: string} true "OQL query string"
-// @Success 200 {object} map[string]interface{} "Query results"
-// @Failure 400 {object} api.QueryError "Bad request or OQL parse error"
-// @Failure 401 {object} api.QueryError "Unauthorized"
-// @Failure 500 {object} api.QueryError "Internal server error"
+// @Param request body object{query string} true "OQL query string" "{"query": "is_active = true AND software.vendor = \"Microsoft\" limit 10"}"
+// @Success 200 {object} map[string]interface{} "Query results with data and metadata" "{"data": [{"id": 1, "canonical_name": "webserver01"}], "meta": {"total": 1, "limit": 10}}"
+// @Failure 400 {object} api.QueryError "Bad request or OQL parse error" "{"code": "OQL_PARSE_ERROR", "message": "Failed to parse OQL query", "details": {"error": "unexpected token at line 1:15"}}"
+// @Failure 401 {object} api.QueryError "Unauthorized" "{"code": "UNAUTHORIZED", "message": "User context not found"}"
+// @Failure 500 {object} api.QueryError "Internal server error" "{"code": "QUERY_FAILED", "message": "Query execution failed"}"
 // @Security ApiKeyAuth
 // @Router /query/oql [post]
 func (h *QueryHandler) QueryOQL(w http.ResponseWriter, r *http.Request) {
@@ -478,14 +486,16 @@ func (h *QueryHandler) QueryOQL(w http.ResponseWriter, r *http.Request) {
 
 // ValidateOQL handles POST /api/v1/query/oql/validate
 // @Summary Validate OQL query syntax
-// @Description Validates OQL query syntax without executing it
+// @Description Validates OQL query syntax without executing it. Useful for real-time validation in query editors.
+// @Description Returns a boolean indicating validity and an array of error messages if invalid.
 // @Tags query
 // @Accept json
 // @Produce json
-// @Param request body object {query: string} true "OQL query string"
-// @Success 200 {object} map[string]interface{} "Validation result"
-// @Failure 400 {object} api.QueryError "Bad request"
-// @Failure 401 {object} api.QueryError "Unauthorized"
+// @Param request body object{query string} true "OQL query string to validate" "{"query": "is_active = true AND software.vendor = \"Microsoft\" limit 10"}"
+// @Success 200 {object} map[string]interface{} "Validation result" "{"valid": true, "errors": []}"
+// @Success 200 {object} map[string]interface{} "Invalid query result" "{"valid": false, "errors": ["unexpected token 'AND' at line 1:20"]}"
+// @Failure 400 {object} api.QueryError "Bad request" "{"code": "INVALID_REQUEST", "message": "Query is required"}"
+// @Failure 401 {object} api.QueryError "Unauthorized" "{"code": "UNAUTHORIZED", "message": "User context not found"}"
 // @Security ApiKeyAuth
 // @Router /query/oql/validate [post]
 func (h *QueryHandler) ValidateOQL(w http.ResponseWriter, r *http.Request) {
@@ -534,15 +544,16 @@ func (h *QueryHandler) ValidateOQL(w http.ResponseWriter, r *http.Request) {
 
 // ExplainOQL handles POST /api/v1/query/oql/explain
 // @Summary Explain OQL query translation
-// @Description Converts OQL to unified query JSON and generated SQL (for debugging/learning)
+// @Description Converts OQL to unified query JSON and shows how it translates to SQL. Useful for debugging, learning, and understanding query behavior.
+// @Description Returns the unified query JSON structure and the generated SQL with parameters.
 // @Tags query
 // @Accept json
 // @Produce json
-// @Param request body object {query: string} true "OQL query string"
-// @Success 200 {object} map[string]interface{} "Query explanation"
-// @Failure 400 {object} api.QueryError "Bad request or OQL parse error"
-// @Failure 401 {object} api.QueryError "Unauthorized"
-// @Failure 500 {object} api.QueryError "Internal server error"
+// @Param request body object{query string} true "OQL query string to explain" "{"query": "is_active = true AND software.vendor = \"Microsoft\" limit 10"}"
+// @Success 200 {object} map[string]interface{} "Query explanation with unified query JSON and SQL" "{"unified_query": {"primary_entity": "assets", "filters": [...]}, "sql": "SELECT ... FROM assets ...", "args": [...]}"
+// @Failure 400 {object} api.QueryError "Bad request or OQL parse error" "{"code": "OQL_PARSE_ERROR", "message": "Failed to parse OQL query", "details": {"error": "unexpected token at line 1:15"}}"
+// @Failure 401 {object} api.QueryError "Unauthorized" "{"code": "UNAUTHORIZED", "message": "User context not found"}"
+// @Failure 500 {object} api.QueryError "Internal server error" "{"code": "TRANSLATION_ERROR", "message": "Failed to translate query to SQL"}"
 // @Security ApiKeyAuth
 // @Router /query/oql/explain [post]
 func (h *QueryHandler) ExplainOQL(w http.ResponseWriter, r *http.Request) {

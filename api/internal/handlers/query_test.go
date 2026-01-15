@@ -26,6 +26,13 @@ func (m *mockQueryExecutor) Execute(ctx context.Context, tenantID string, entity
 	return m.result, nil
 }
 
+// mockQueryTranslator is a mock implementation of TranslatorInterface for testing
+type mockQueryTranslator struct{}
+
+func (m *mockQueryTranslator) Translate(entityType string, q *query.Query) (string, []interface{}, error) {
+	return "SELECT * FROM assets WHERE tenant_id = $1", []interface{}{}, nil
+}
+
 // TestQueryAssets_Success tests successful asset query execution
 func TestQueryAssets_Success(t *testing.T) {
 	t.Run("valid query returns results", func(t *testing.T) {
@@ -42,7 +49,7 @@ func TestQueryAssets_Success(t *testing.T) {
 			},
 		}
 
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
@@ -107,7 +114,7 @@ func TestQueryFindings_Success(t *testing.T) {
 			},
 		}
 
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"filters": [
@@ -150,7 +157,7 @@ func TestQueryFindings_Success(t *testing.T) {
 func TestQueryAssets_Errors(t *testing.T) {
 	t.Run("invalid JSON returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{invalid json`
 		req := httptest.NewRequest("POST", "/api/v1/query/assets", bytes.NewReader([]byte(body)))
@@ -183,7 +190,7 @@ func TestQueryAssets_Errors(t *testing.T) {
 		executor := &mockQueryExecutor{
 			err: errors.New("validation error: field 'severity' not allowed for entity assets"),
 		}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"filters": [{"field": "severity", "operator": "eq", "value": "critical"}]
@@ -217,7 +224,7 @@ func TestQueryAssets_Errors(t *testing.T) {
 
 	t.Run("missing user context returns 401", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
@@ -234,9 +241,19 @@ func TestQueryAssets_Errors(t *testing.T) {
 		}
 	})
 
-	t.Run("missing filters returns 400", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+	t.Run("missing filters returns 200 OK", func(t *testing.T) {
+		// Note: Empty filters are allowed (useful for query pages that load all data)
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{},
+				Meta: &query.QueryMeta{
+					TotalRows:       0,
+					ExecutionTimeMs: 2,
+					HasMore:         false,
+				},
+			},
+		}
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{"limit": 50}`
 
@@ -247,8 +264,8 @@ func TestQueryAssets_Errors(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.QueryAssets(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want 400", w.Code)
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
 		}
 
 		var resp map[string]interface{}
@@ -256,13 +273,8 @@ func TestQueryAssets_Errors(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		errResp, ok := resp["error"].(map[string]interface{})
-		if !ok {
-			t.Fatal("expected error field in response")
-		}
-
-		if errResp["code"] != "MISSING_FILTERS" {
-			t.Errorf("got error code %v, want MISSING_FILTERS", errResp["code"])
+		if resp["data"] == nil {
+			t.Fatal("expected data field in response")
 		}
 	})
 
@@ -270,7 +282,7 @@ func TestQueryAssets_Errors(t *testing.T) {
 		executor := &mockQueryExecutor{
 			err: errors.New("database connection failed"),
 		}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"filters": [{"field": "is_active", "operator": "eq", "value": true}]
@@ -306,7 +318,7 @@ func TestQueryAssets_Errors(t *testing.T) {
 func TestQueryFindings_Errors(t *testing.T) {
 	t.Run("invalid JSON returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{invalid json`
 		req := httptest.NewRequest("POST", "/api/v1/query/findings", bytes.NewReader([]byte(body)))
@@ -321,9 +333,21 @@ func TestQueryFindings_Errors(t *testing.T) {
 		}
 	})
 
-	t.Run("missing filters returns 400", func(t *testing.T) {
-		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+	t.Run("missing filters returns 200 OK", func(t *testing.T) {
+		// Note: Empty filters are allowed (useful for query pages that load all data)
+		executor := &mockQueryExecutor{
+			result: &query.QueryResult{
+				Data: []map[string]interface{}{
+					{"id": int64(1), "severity": "critical"},
+				},
+				Meta: &query.QueryMeta{
+					TotalRows:       1,
+					ExecutionTimeMs: 3,
+					HasMore:         false,
+				},
+			},
+		}
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{"sort": [{"field": "severity", "order": "desc"}]}`
 
@@ -334,8 +358,8 @@ func TestQueryFindings_Errors(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.QueryFindings(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want 400", w.Code)
+		if w.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", w.Code)
 		}
 
 		var resp map[string]interface{}
@@ -343,13 +367,8 @@ func TestQueryFindings_Errors(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		errResp, ok := resp["error"].(map[string]interface{})
-		if !ok {
-			t.Fatal("expected error field in response")
-		}
-
-		if errResp["code"] != "MISSING_FILTERS" {
-			t.Errorf("got error code %v, want MISSING_FILTERS", errResp["code"])
+		if resp["data"] == nil {
+			t.Fatal("expected data field in response")
 		}
 	})
 }
@@ -357,7 +376,7 @@ func TestQueryFindings_Errors(t *testing.T) {
 func TestSavedQueries(t *testing.T) {
 	t.Run("ListSavedQueries returns not implemented", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		req := httptest.NewRequest("GET", "/api/v1/query/saved", nil)
 		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-list")
@@ -372,7 +391,7 @@ func TestSavedQueries(t *testing.T) {
 
 	t.Run("CreateSavedQuery returns not implemented", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{"name": "test", "filters": []}`
 		req := httptest.NewRequest("POST", "/api/v1/query/saved", bytes.NewReader([]byte(body)))
@@ -389,7 +408,7 @@ func TestSavedQueries(t *testing.T) {
 
 	t.Run("GetSavedQuery returns not implemented", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		req := httptest.NewRequest("GET", "/api/v1/query/saved/my-query", nil)
 		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-get")
@@ -404,7 +423,7 @@ func TestSavedQueries(t *testing.T) {
 
 	t.Run("DeleteSavedQuery returns not implemented", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		req := httptest.NewRequest("DELETE", "/api/v1/query/saved/my-query", nil)
 		req = setQueryUserContextWithRequestID(req, 1, "test-req-saved-delete")
@@ -439,7 +458,7 @@ func TestQueryUnified(t *testing.T) {
 			},
 		}
 
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"primary_entity": "assets",
@@ -477,7 +496,7 @@ func TestQueryUnified(t *testing.T) {
 
 	t.Run("invalid JSON returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{invalid json`
 		req := httptest.NewRequest("POST", "/api/v1/query/unified", bytes.NewReader([]byte(body)))
@@ -508,7 +527,7 @@ func TestQueryUnified(t *testing.T) {
 
 	t.Run("missing user context returns 401", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"primary_entity": "assets",
@@ -530,7 +549,7 @@ func TestQueryUnified(t *testing.T) {
 		executor := &mockQueryExecutor{
 			err: errors.New("validation error: unsupported join entity 'unknown_entity'"),
 		}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"primary_entity": "assets",
@@ -570,7 +589,7 @@ func TestQueryUnified(t *testing.T) {
 		executor := &mockQueryExecutor{
 			err: errors.New("database connection failed"),
 		}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"primary_entity": "assets",
@@ -624,7 +643,7 @@ func TestQueryOQL(t *testing.T) {
 			},
 		}
 
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"query": "is_active = true limit 10"
@@ -675,7 +694,7 @@ func TestQueryOQL(t *testing.T) {
 			},
 		}
 
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"query": "software.vendor = \"Microsoft\" limit 10"
@@ -695,7 +714,7 @@ func TestQueryOQL(t *testing.T) {
 
 	t.Run("invalid OQL query returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"query": "invalid syntax here !!!"
@@ -729,7 +748,7 @@ func TestQueryOQL(t *testing.T) {
 
 	t.Run("missing query field returns 400", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{"limit": 50}`
 
@@ -761,7 +780,7 @@ func TestQueryOQL(t *testing.T) {
 
 	t.Run("missing user context returns 401", func(t *testing.T) {
 		executor := &mockQueryExecutor{}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"query": "is_active = true"
@@ -782,7 +801,7 @@ func TestQueryOQL(t *testing.T) {
 		executor := &mockQueryExecutor{
 			err: errors.New("database connection failed"),
 		}
-		handler := NewQueryHandler(executor)
+		handler := NewQueryHandler(executor, &mockQueryTranslator{})
 
 		body := `{
 			"query": "is_active = true"
