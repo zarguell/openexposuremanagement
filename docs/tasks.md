@@ -21,28 +21,28 @@ Enable cross-entity queries to answer complex exposure questions like "assets wi
 - Require filters on primary entity first
 - Subquery pushdown for filtering
 
- - [ ] Task: Design unified query API specification
+ - [x] Task: Design unified query API specification
    - **Description:** Define JSON schema for unified queries supporting 2-way joins between entities (assets + software, assets + findings). Specify join types, relationship definitions, and result aggregation patterns.
    - **Acceptance criteria:** Complete API spec with examples for all use cases; documented in `docs/architecture.md`; performance requirements specified (limits, timeouts).
    - **Validation command:** `markdownlint docs/architecture.md`
    - **Dependencies:** Software Inventory milestone complete
    - **Estimated tokens:** 2200
 
- - [ ] Task: Extend query types for join support
+ - [x] Task: Extend query types for join support
    - **Description:** Add `Join` type to `internal/services/query/types.go` with entity relationship definitions, join conditions (ON clause), and join type restrictions (LEFT JOIN only for MVP).
    - **Acceptance criteria:** Type definitions support 2-way joins; validation prevents circular references; tests cover valid/invalid join scenarios.
    - **Validation command:** `go test ./internal/services/query/...`
    - **Dependencies:** Design unified query API specification
    - **Estimated tokens:** 2800
 
- - [ ] Task: Extend query translator for JOIN SQL generation
+ - [x] Task: Extend query translator for JOIN SQL generation
    - **Description:** Update `internal/services/query/translator.go` to generate LEFT JOIN SQL from unified query JSON, including table aliases, join conditions, and proper WHERE clause placement.
    - **Acceptance criteria:** Generates valid parameterized SQL for 2-way joins; handles NULL checks correctly; unit tests verify SQL output.
    - **Validation command:** `go test ./internal/services/query/... -run TestTranslatorJoins`
    - **Dependencies:** Extend query types for join support
    - **Estimated tokens:** 3200
 
- - [ ] Task: Add performance guardrails to query executor
+ - [x] Task: Add performance guardrails to query executor
    - **Description:** Implement query result limits (5,000 rows), timeout enforcement (5 seconds), and query cost estimation in `internal/services/query/executor.go`. Add early termination and logging.
    - **Acceptance criteria:** Queries exceeding limits return error; timeout enforced; slow queries logged; metrics recorded for monitoring.
    - **Validation command:** `go test ./internal/services/query/... -run TestQueryGuardrails`
@@ -56,14 +56,14 @@ Enable cross-entity queries to answer complex exposure questions like "assets wi
    - **Dependencies:** Extend query types for join support
    - **Estimated tokens:** 2400
 
- - [ ] Task: Implement POST /api/v1/query/unified endpoint
+ - [x] Task: Implement POST /api/v1/query/unified endpoint
    - **Description:** Add unified query handler in `internal/handlers/query.go` accepting 2-way join queries, returning correlated results with entity metadata.
    - **Acceptance criteria:** Endpoint accepts valid unified query JSON; returns results with proper entity context; tenant scoping enforced; integration tests pass.
    - **Validation command:** `go test ./... && curl -sf http://localhost:8080/api/v1/query/unified`
    - **Dependencies:** Add performance guardrails to query executor
    - **Estimated tokens:** 3000
 
- - [ ] Task: Create unified query templates
+ - [x] Task: Create unified query templates
    - **Description:** Implement query template library in `internal/services/query/templates.go` with pre-built queries for common scenarios (missing software, exploitable CVEs, software vulnerability correlation).
    - **Acceptance criteria:** Templates cover major use cases; templates are parameterized; can be loaded and executed via API.
    - **Validation command:** `go test ./internal/services/query/... -run TestQueryTemplates`
@@ -98,14 +98,14 @@ Enable cross-entity queries to answer complex exposure questions like "assets wi
    - **Dependencies:** Add unified query page with template library
    - **Estimated tokens:** 2400
 
- - [ ] Task: Add unified query documentation and examples
+ - [x] Task: Add unified query documentation and examples
    - **Description:** Document unified query syntax, templates, performance considerations, and common query patterns in `docs/unified-queries.md`.
    - **Acceptance criteria:** Examples cover all use cases; performance guidelines documented; limitations clearly stated; docs pass lint.
    - **Validation command:** `markdownlint docs/unified-queries.md`
    - **Dependencies:** Update default dashboard with unified query widgets
    - **Estimated tokens:** 2000
 
- - [ ] Task: Milestone refactor & optimization pass
+ - [x] Task: Milestone refactor & optimization pass
    - **Description:** Review query performance, add subquery pushdown optimization, create materialized views for slow widget queries, and document known limitations.
    - **Acceptance criteria:** Dashboard widgets load in <2 seconds; slow queries identified and optimized; migration for materialized views created; docs updated.
    - **Validation command:** `make demo-smoke && ab -n 100 http://localhost:8080/api/v1/query/unified`

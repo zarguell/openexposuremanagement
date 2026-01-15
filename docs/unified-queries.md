@@ -105,12 +105,24 @@ Findings view already includes asset information.
 - **Filters**: Required on primary entity for performance
 - **Indexes**: Composite indexes support common join patterns
 
-## Limitations
+## Known Limitations (MVP)
 
-- 2-way joins only (no multi-hop joins in MVP)
-- LEFT JOIN only (no INNER, RIGHT, CROSS)
-- Filter fields must belong to primary or joined entity
-- Aggregations not yet supported on joined fields
+- **No N-way joins** (3+ entities) - only 2-way LEFT JOIN supported
+- **No aggregations on joined fields** - aggregations work on primary entity only
+- **No subquery pushdown optimization** - filters are applied after JOIN
+- **Template parameter substitution not yet implemented** - placeholders like `{{software_name}}` require manual replacement
+- **UI query builder not yet implemented** - backend-only API at this time
+- **No result caching** - each query executes against database
+
+## Future Enhancements
+
+- N-way JOIN support (3+ entity joins)
+- Subquery pushdown for better performance
+- Query result caching (5-minute TTL)
+- Materialized views for common join patterns
+- Template parameter substitution in backend
+- UI query builder with visual interface
+- Custom dashboard builder with unified query widgets
 
 ## Templates
 
