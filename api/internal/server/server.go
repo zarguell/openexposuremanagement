@@ -11,7 +11,7 @@ import (
 	"github.com/openexposuremanagement/oem/internal/handlers"
 	"github.com/openexposuremanagement/oem/internal/services/query"
 	"github.com/rs/zerolog/log"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 // Server represents the HTTP server
