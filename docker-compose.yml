@@ -80,7 +80,7 @@ services:
       - test
 
   pgadmin:
-    image: dpage/pgadmin4:8.14
+    image: dpage/pgadmin4:9.17
     container_name: oem-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@oem.local
