@@ -20,11 +20,11 @@ Complete operational manual for deploying, managing, and troubleshooting the OEM
 
 The OEM platform runs as a set of interconnected Docker containers on a single host:
 
-**oem-postgres** (PostgreSQL 16)
+**oem-postgres** (PostgreSQL 19)
 - **Port**: 5432
 - **Purpose**: System of record for all data
 - **Credentials**: `oem/password` (default - change for production)
-- **Volume**: `postgres-data` persists all database data
+- **Volume**: `postgres-data` persists all database data (mounted at `/var/lib/postgresql`; PG18+ stores the cluster in a major-version subdirectory, e.g. `/var/lib/postgresql/19/docker`)
 - **Stores**: tenants, users, assets, findings, threat intel cache
 
 **oem-api** (Go 1.21+)
@@ -984,7 +984,7 @@ For developers contributing to OEM, you can run services locally instead of Dock
 **Prerequisites:**
 - Go 1.21+
 - Node.js 20+
-- PostgreSQL 16+ running locally on port 5432
+- PostgreSQL 19+ running locally on port 5432
 
 #### Backend Development (Go)
 
